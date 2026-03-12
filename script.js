@@ -6,6 +6,9 @@ const emptyState = document.getElementById('emptyState');
 const summary = document.getElementById('summary');
 const todayLabel = document.getElementById('todayLabel');
 const resetTodayBtn = document.getElementById('resetTodayBtn');
+const exportBtn = document.getElementById('exportBtn');
+const importBtn = document.getElementById('importBtn');
+const importFile = document.getElementById('importFile');
 
 const STORAGE_KEY = 'medication-tracker.v1';
 const TIME_OPTIONS = ['morning', 'afternoon', 'evening'];
@@ -44,6 +47,19 @@ function getTodayKey() {
   return `${year}-${month}-${day}`;
 }
 
+function sanitizeMedicines(medicines) {
+  if (!Array.isArray(medicines)) return [];
+
+  return medicines
+    .filter((m) => m && typeof m.name === 'string')
+    .map((m) => ({
+      id: typeof m.id === 'string' ? m.id : makeId(),
+      name: m.name,
+      taken: Boolean(m.taken),
+      time: normalizeTime(m.time),
+    }));
+}
+
 function loadState() {
   const today = getTodayKey();
 
@@ -55,17 +71,8 @@ function loadState() {
     }
 
     const parsed = JSON.parse(raw);
-    const medicines = Array.isArray(parsed?.medicines) ? parsed.medicines : [];
     const storedDate = typeof parsed?.date === 'string' ? parsed.date : today;
-
-    const safeMedicines = medicines
-      .filter((m) => m && typeof m.name === 'string')
-      .map((m) => ({
-        id: typeof m.id === 'string' ? m.id : makeId(),
-        name: m.name,
-        taken: Boolean(m.taken),
-        time: normalizeTime(m.time),
-      }));
+    const safeMedicines = sanitizeMedicines(parsed?.medicines);
 
     if (storedDate !== today) {
       safeMedicines.forEach((m) => {
@@ -226,6 +233,38 @@ function resetToday() {
   renderMedicines();
 }
 
+function downloadJson(filename, data) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function exportData() {
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    date: getTodayKey(),
+    medicines: state.medicines,
+  };
+
+  downloadJson(`medication-tracker-backup-${getTodayKey()}.json`, payload);
+}
+
+function importDataFromObject(obj) {
+  const medicines = sanitizeMedicines(obj?.medicines);
+
+  state.medicines = medicines;
+  state.date = getTodayKey();
+
+  saveState();
+  renderMedicines();
+}
+
 let state = loadState();
 state.date = getTodayKey();
 saveState();
@@ -250,6 +289,32 @@ if (resetTodayBtn) {
     if (!ok) return;
 
     resetToday();
+  });
+}
+
+if (exportBtn) {
+  exportBtn.addEventListener('click', () => {
+    exportData();
+  });
+}
+
+if (importBtn && importFile) {
+  importBtn.addEventListener('click', () => {
+    importFile.value = '';
+    importFile.click();
+  });
+
+  importFile.addEventListener('change', async () => {
+    const file = importFile.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      importDataFromObject(data);
+    } catch {
+      window.alert('Sorry, that file could not be imported. Please choose a valid backup .json file.');
+    }
   });
 }
 

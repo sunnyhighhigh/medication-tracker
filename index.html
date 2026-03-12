@@ -71,6 +71,13 @@
 
     <section class="card">
       <h2>Today&#39;s Medicines</h2>
+
+      <div class="toolbar" aria-label="Backup">
+        <button id="exportBtn" type="button" class="secondary">Export</button>
+        <button id="importBtn" type="button" class="secondary">Import</button>
+        <input id="importFile" type="file" accept="application/json" class="sr-only" />
+      </div>
+
       <p id="summary" class="summary" aria-live="polite"></p>
       <ul id="medicineList" class="medicine-list"></ul>
       <p id="emptyState" class="empty">No medicines added yet.</p>
