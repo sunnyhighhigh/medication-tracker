@@ -146,8 +146,29 @@ function renderMedicines() {
     tag.className = 'tag';
     tag.textContent = formatTimeLabel(medicine.time);
 
+    const timeSelect = document.createElement('select');
+    timeSelect.className = 'time-edit';
+    timeSelect.setAttribute('aria-label', `Edit time for ${medicine.name}`);
+
+    TIME_OPTIONS.forEach((opt) => {
+      const option = document.createElement('option');
+      option.value = opt;
+      option.textContent = formatTimeLabel(opt);
+      if (normalizeTime(medicine.time) === opt) {
+        option.selected = true;
+      }
+      timeSelect.appendChild(option);
+    });
+
+    timeSelect.addEventListener('change', () => {
+      medicine.time = normalizeTime(timeSelect.value);
+      saveState();
+      tag.textContent = formatTimeLabel(medicine.time);
+    });
+
     nameRow.appendChild(name);
     nameRow.appendChild(tag);
+    nameRow.appendChild(timeSelect);
 
     const status = document.createElement('div');
     status.className = `status ${medicine.taken ? 'taken' : ''}`;
