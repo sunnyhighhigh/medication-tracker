@@ -57,6 +57,14 @@
       <form id="medicineForm" class="form-row">
         <label class="sr-only" for="medicineInput">Medicine name</label>
         <input id="medicineInput" type="text" placeholder="e.g., Vitamin D" autocomplete="off" required />
+
+        <label class="sr-only" for="timeInput">Time of day</label>
+        <select id="timeInput" aria-label="Time of day">
+          <option value="morning">Morning</option>
+          <option value="afternoon">Afternoon</option>
+          <option value="evening">Evening</option>
+        </select>
+
         <button type="submit">Add</button>
       </form>
     </section>

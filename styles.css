@@ -113,12 +113,20 @@ h1 {
   gap: 10px;
 }
 
-input[type="text"] {
-  flex: 1;
+input[type="text"],
+select {
   padding: 10px;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   font-size: 16px;
+}
+
+input[type="text"] {
+  flex: 1;
+}
+
+select {
+  background: #ffffff;
 }
 
 button {
@@ -136,7 +144,8 @@ button:hover {
 }
 
 button:focus-visible,
-input[type="text"]:focus-visible {
+input[type="text"]:focus-visible,
+select:focus-visible {
   outline: 3px solid rgba(37, 99, 235, 0.35);
   outline-offset: 2px;
 }
@@ -177,8 +186,25 @@ button.secondary:hover {
   margin-bottom: 10px;
 }
 
+.name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .medicine-name {
   font-weight: 600;
+}
+
+.tag {
+  display: inline-block;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  background: rgba(37, 99, 235, 0.08);
+  color: #1d4ed8;
 }
 
 .status {

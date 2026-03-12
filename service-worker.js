@@ -1,9 +1,10 @@
-﻿const CACHE_NAME = 'medication-tracker-cache-v1';
+﻿const CACHE_NAME = 'medication-tracker-cache-v2';
 
 const CORE_ASSETS = [
   './index.html',
   './styles.css',
   './script.js',
+  './service-worker.js',
   './manifest.webmanifest',
   './icon.svg',
 ];
@@ -35,9 +36,7 @@ self.addEventListener('fetch', (event) => {
 
   // App-shell fallback for page navigations.
   if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request).catch(() => caches.match('./index.html'))
-    );
+    event.respondWith(fetch(request).catch(() => caches.match('./index.html')));
     return;
   }
 

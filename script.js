@@ -1,5 +1,6 @@
 ﻿const medicineForm = document.getElementById('medicineForm');
 const medicineInput = document.getElementById('medicineInput');
+const timeInput = document.getElementById('timeInput');
 const medicineList = document.getElementById('medicineList');
 const emptyState = document.getElementById('emptyState');
 const summary = document.getElementById('summary');
@@ -7,6 +8,7 @@ const todayLabel = document.getElementById('todayLabel');
 const resetTodayBtn = document.getElementById('resetTodayBtn');
 
 const STORAGE_KEY = 'medication-tracker.v1';
+const TIME_OPTIONS = ['morning', 'afternoon', 'evening'];
 
 function makeId() {
   if (window.crypto && typeof crypto.randomUUID === 'function') {
@@ -14,6 +16,24 @@ function makeId() {
   }
 
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function normalizeTime(value) {
+  if (typeof value !== 'string') return 'morning';
+  const lower = value.toLowerCase();
+  return TIME_OPTIONS.includes(lower) ? lower : 'morning';
+}
+
+function formatTimeLabel(value) {
+  switch (normalizeTime(value)) {
+    case 'afternoon':
+      return 'Afternoon';
+    case 'evening':
+      return 'Evening';
+    case 'morning':
+    default:
+      return 'Morning';
+  }
 }
 
 function getTodayKey() {
@@ -44,6 +64,7 @@ function loadState() {
         id: typeof m.id === 'string' ? m.id : makeId(),
         name: m.name,
         taken: Boolean(m.taken),
+        time: normalizeTime(m.time),
       }));
 
     if (storedDate !== today) {
@@ -114,15 +135,25 @@ function renderMedicines() {
 
     const leftSide = document.createElement('div');
 
+    const nameRow = document.createElement('div');
+    nameRow.className = 'name-row';
+
     const name = document.createElement('div');
     name.className = 'medicine-name';
     name.textContent = medicine.name;
+
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = formatTimeLabel(medicine.time);
+
+    nameRow.appendChild(name);
+    nameRow.appendChild(tag);
 
     const status = document.createElement('div');
     status.className = `status ${medicine.taken ? 'taken' : ''}`;
     status.textContent = medicine.taken ? 'Status: Taken' : 'Status: Pending';
 
-    leftSide.appendChild(name);
+    leftSide.appendChild(nameRow);
     leftSide.appendChild(status);
 
     const completeButton = document.createElement('button');
@@ -149,13 +180,14 @@ function renderMedicines() {
   syncResetButton();
 }
 
-function addMedicine(name) {
+function addMedicine(name, time) {
   const trimmed = name.trim();
   if (!trimmed) return;
 
   state.medicines.push({
     id: makeId(),
     name: trimmed,
+    time: normalizeTime(time),
     taken: false,
   });
 
@@ -183,7 +215,7 @@ renderMedicines();
 medicineForm.addEventListener('submit', (event) => {
   event.preventDefault();
 
-  addMedicine(medicineInput.value);
+  addMedicine(medicineInput.value, timeInput?.value);
 
   medicineInput.value = '';
   medicineInput.focus();
@@ -213,4 +245,3 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./service-worker.js').catch(() => {});
   });
 }
-
