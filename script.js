@@ -53,6 +53,54 @@ const deviceId = getOrCreateDeviceId();
 const isIos = /\\b(iPad|iPhone|iPod)\\b/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const isStandalone = window.matchMedia?.('(display-mode: standalone)')?.matches || navigator.standalone === true;
 
+
+const AUTH_ATTEMPT_KEY = 'medication-tracker.authAttemptAt';
+let authHelpShown = false;
+
+function markAuthAttempt() {
+  try {
+    sessionStorage.setItem(AUTH_ATTEMPT_KEY, String(Date.now()));
+  } catch {
+    // ignore
+  }
+}
+
+function clearAuthAttempt() {
+  try {
+    sessionStorage.removeItem(AUTH_ATTEMPT_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+function maybeShowAuthHelp() {
+  if (authHelpShown) return;
+
+  let attemptAt = 0;
+  try {
+    attemptAt = Number(sessionStorage.getItem(AUTH_ATTEMPT_KEY) || 0);
+  } catch {
+    attemptAt = 0;
+  }
+
+  if (!attemptAt) return;
+
+  const ageMs = Date.now() - attemptAt;
+  if (ageMs > 2 * 60 * 1000) {
+    clearAuthAttempt();
+    return;
+  }
+
+  authHelpShown = true;
+
+  setTimeout(() => {
+    if (cloud?.user) return;
+
+    window.alert(
+      'Google sign-in started but did not finish.\n\nTry: \n- iPhone Settings > Safari: turn OFF Block All Cookies (and try turning OFF Prevent Cross-Site Tracking).\n- Firebase Console > Authentication > Authorized domains: add sunnyhighhigh.github.io\n- Use Safari (not an in-app browser) and not Private Browsing.\n- If you added to Home Screen, sign in in Safari first.\n\nThen reload and try again.'
+    );
+  }, 1200);
+}
 function normalizeTime(value) {
   if (typeof value !== 'string') return 'morning';
   const lower = value.toLowerCase();
@@ -502,140 +550,22 @@ function saveState() {
 
 function setAuthUi(user) {
   if (signInBtn) {
-    signInBtn.hidden = Boolean(user);
-    signInBtn.disabled = !cloud.available;
-  }
-
-  if (signOutBtn) {
-    signOutBtn.hidden = !user;
-  }
-
-  if (userLabel) {
-    if (!cloud.available) {
-      userLabel.textContent = 'Cloud sync not configured';
-    } else if (!user) {
-      userLabel.textContent = '';
-    } else {
-      const name = user.displayName || user.email || 'Signed in';
-      userLabel.textContent = name;
-    }
-  }
-}
-
-async function ensureUserDocExists() {
-  if (!cloud.userDocRef || !cloud.sdk) return;
-
-  const { getDoc, setDoc, serverTimestamp } = cloud.sdk;
-  const snap = await getDoc(cloud.userDocRef);
-
-  if (snap.exists()) return;
-
-  // First time signing in on this device: seed cloud with whatever is currently saved locally.
-  const seeded = normalizeState(state);
-  await setDoc(cloud.userDocRef, {
-    schemaVersion: 1,
-    state: seeded,
-    updatedAtMs: Date.now(),
-    updatedAt: serverTimestamp(),
-    sourceDeviceId: deviceId,
-  });
-}
-
-function teardownCloudListener() {
-  if (cloud.unsubscribe) {
-    cloud.unsubscribe();
-    cloud.unsubscribe = null;
-  }
-  cloud.userDocRef = null;
-  cloud.connected = false;
-  cloud.lastRemoteUpdatedAtMs = 0;
-}
-
-async function handleSignedIn(user) {
-  cloud.user = user;
-  setAuthUi(user);
-
-  const { doc, onSnapshot } = cloud.sdk;
-  cloud.userDocRef = doc(cloud.db, 'users', user.uid);
-
-  teardownCloudListener();
-  cloud.userDocRef = doc(cloud.db, 'users', user.uid);
-
-  cloud.unsubscribe = onSnapshot(
-    cloud.userDocRef,
-    (snap) => {
-      cloud.connected = true;
-      updateHeader();
-
-      if (!snap.exists()) return;
-
-      const data = snap.data();
-      const updatedAtMs = typeof data?.updatedAtMs === 'number' ? data.updatedAtMs : 0;
-      if (updatedAtMs && updatedAtMs <= cloud.lastRemoteUpdatedAtMs) return;
-
-      applyRemoteState(data?.state, updatedAtMs, data?.sourceDeviceId);
-    },
-    () => {
-      cloud.connected = false;
-      updateHeader();
-    }
-  );
-
-  try {
-    await ensureUserDocExists();
-  } catch {
-    // ignore
-  }
-}
-
-async function handleSignedOut() {
-  cloud.user = null;
-  teardownCloudListener();
-  setAuthUi(null);
-  updateHeader();
-}
-
-async function initCloud() {
-  setAuthUi(null);
-  updateHeader();
-
-  if (!cloud.available) return;
-
-  try {
-    const appModule = await import(
-      `https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-app.js`
-    );
-    const authModule = await import(
-      `https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-auth.js`
-    );
-    const firestoreModule = await import(
-      `https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-firestore.js`
-    );
-
-    const { initializeApp } = appModule;
-    const {
-      getAuth,
-      onAuthStateChanged,
-      GoogleAuthProvider,
-      signInWithPopup,
-      signInWithRedirect,
-      getRedirectResult,
-      signOut,
-    } = authModule;
-    const { getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp } = firestoreModule;
-
-    cloud.sdk = { doc, getDoc, setDoc, onSnapshot, serverTimestamp, signOut };
-
-    const app = initializeApp(FIREBASE_CONFIG);
-    cloud.auth = getAuth(app);
-    cloud.db = getFirestore(app);
-    cloud.provider = new GoogleAuthProvider();
-
-    if (signInBtn) {
       signInBtn.addEventListener('click', async () => {
         try {
-          if (isIos || isStandalone) {\r\n            if (isStandalone) {\r\n              window.alert('If you added this to your Home Screen, iOS may open Safari to finish sign-in. If sign-in fails, open the site in Safari and sign in there.');\r\n            }\r\n            await signInWithRedirect(cloud.auth, cloud.provider);\r\n          } else {\r\n            await signInWithPopup(cloud.auth, cloud.provider);\r\n          }
+          markAuthAttempt();
+
+          if (isIos || isStandalone) {
+            if (isStandalone) {
+              window.alert(
+                'If you added this to your Home Screen, iOS may open Safari to finish sign-in. If sign-in fails, open the site in Safari and sign in there.'
+              );
+            }
+            await signInWithRedirect(cloud.auth, cloud.provider);
+          } else {
+            await signInWithPopup(cloud.auth, cloud.provider);
+          }
         } catch (err) {
+          clearAuthAttempt();
           const msg = String(err?.message || err || 'Sign-in failed');
           window.alert(`Sign-in failed.\n\n${msg}`);
         }
@@ -653,15 +583,27 @@ async function initCloud() {
     }
 
     // If we used redirect sign-in (mobile), this finishes the auth flow.
-    try {\r\n      await getRedirectResult(cloud.auth);\r\n    } catch (err) {\r\n      if (isIos || isStandalone) {\r\n        const msg = String(err?.message || err || 'Redirect sign-in failed');\r\n        window.alert(Redirect sign-in failed.\\n\\n);\r\n      }\r\n    }
+    try {
+      await getRedirectResult(cloud.auth);
+    } catch (err) {
+      if (isIos || isStandalone) {
+        const msg = String(err?.message || err || 'Redirect sign-in failed');
+        window.alert(`Redirect sign-in failed.\n\n${msg}`);
+      }
+    }
 
     onAuthStateChanged(cloud.auth, (user) => {
       if (user) {
+        clearAuthAttempt();
         handleSignedIn(user).catch(() => {
           cloud.connected = false;
           updateHeader();
         });
       } else {
+        maybeShowAuthHelp();
+        handleSignedOut().catch(() => {});
+      }
+    });} else {
         handleSignedOut().catch(() => {});
       }
     });
@@ -793,6 +735,7 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./service-worker.js').catch(() => {});
   });
 }
+
 
 
 
