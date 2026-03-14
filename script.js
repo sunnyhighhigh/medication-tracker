@@ -59,7 +59,7 @@ let authHelpShown = false;
 
 function markAuthAttempt() {
   try {
-    sessionStorage.setItem(AUTH_ATTEMPT_KEY, String(Date.now()));
+    localStorage.setItem(AUTH_ATTEMPT_KEY, String(Date.now()));
   } catch {
     // ignore
   }
@@ -67,7 +67,7 @@ function markAuthAttempt() {
 
 function clearAuthAttempt() {
   try {
-    sessionStorage.removeItem(AUTH_ATTEMPT_KEY);
+    localStorage.removeItem(AUTH_ATTEMPT_KEY);
   } catch {
     // ignore
   }
@@ -78,7 +78,7 @@ function maybeShowAuthHelp() {
 
   let attemptAt = 0;
   try {
-    attemptAt = Number(sessionStorage.getItem(AUTH_ATTEMPT_KEY) || 0);
+    attemptAt = Number(localStorage.getItem(AUTH_ATTEMPT_KEY) || 0);
   } catch {
     attemptAt = 0;
   }
@@ -100,6 +100,32 @@ function maybeShowAuthHelp() {
       'Google sign-in started but did not finish.\n\nTry: \n- iPhone Settings > Safari: turn OFF Block All Cookies (and try turning OFF Prevent Cross-Site Tracking).\n- Firebase Console > Authentication > Authorized domains: add sunnyhighhigh.github.io\n- Use Safari (not an in-app browser) and not Private Browsing.\n- If you added to Home Screen, sign in in Safari first.\n\nThen reload and try again.'
     );
   }, 1200);
+}
+function scheduleAuthHelpOnLoad() {
+  // iOS redirect sign-in can return in a different tab/context; localStorage keeps the attempt marker.
+  setTimeout(() => {
+    if (cloud?.user) {
+      clearAuthAttempt();
+      return;
+    }
+
+    let attemptAt = 0;
+    try {
+      attemptAt = Number(localStorage.getItem(AUTH_ATTEMPT_KEY) || 0);
+    } catch {
+      attemptAt = 0;
+    }
+
+    if (!attemptAt) return;
+
+    const ageMs = Date.now() - attemptAt;
+    if (ageMs > 2 * 60 * 1000) {
+      clearAuthAttempt();
+      return;
+    }
+
+    maybeShowAuthHelp();
+  }, 2000);
 }
 function normalizeTime(value) {
   if (typeof value !== 'string') return 'morning';
@@ -628,7 +654,7 @@ saveLocalState();
 
 updateHeader();
 renderMedicines();
-initCloud();
+initCloud();\r\nscheduleAuthHelpOnLoad();
 
 medicineForm?.addEventListener('submit', (event) => {
   event.preventDefault();
@@ -735,6 +761,7 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./service-worker.js').catch(() => {});
   });
 }
+
 
 
 
