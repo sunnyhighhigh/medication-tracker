@@ -653,11 +653,7 @@ async function initCloud() {
     }
 
     // If we used redirect sign-in (mobile), this finishes the auth flow.
-    try {
-      await getRedirectResult(cloud.auth);
-    } catch {
-      // ignore
-    }
+    try {\r\n      await getRedirectResult(cloud.auth);\r\n    } catch (err) {\r\n      if (isIos || isStandalone) {\r\n        const msg = String(err?.message || err || 'Redirect sign-in failed');\r\n        window.alert(Redirect sign-in failed.\\n\\n);\r\n      }\r\n    }
 
     onAuthStateChanged(cloud.auth, (user) => {
       if (user) {
@@ -797,5 +793,7 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./service-worker.js').catch(() => {});
   });
 }
+
+
 
 
