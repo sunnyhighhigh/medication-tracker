@@ -50,7 +50,8 @@ function getOrCreateDeviceId() {
 }
 
 const deviceId = getOrCreateDeviceId();
-const isIphone = /\biPhone\b/i.test(navigator.userAgent);
+const isIos = /\\b(iPad|iPhone|iPod)\\b/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isStandalone = window.matchMedia?.('(display-mode: standalone)')?.matches || navigator.standalone === true;
 
 function normalizeTime(value) {
   if (typeof value !== 'string') return 'morning';
@@ -633,11 +634,7 @@ async function initCloud() {
     if (signInBtn) {
       signInBtn.addEventListener('click', async () => {
         try {
-          if (isIphone) {
-            await signInWithRedirect(cloud.auth, cloud.provider);
-          } else {
-            await signInWithPopup(cloud.auth, cloud.provider);
-          }
+          if (isIos || isStandalone) {\r\n            if (isStandalone) {\r\n              window.alert('If you added this to your Home Screen, iOS may open Safari to finish sign-in. If sign-in fails, open the site in Safari and sign in there.');\r\n            }\r\n            await signInWithRedirect(cloud.auth, cloud.provider);\r\n          } else {\r\n            await signInWithPopup(cloud.auth, cloud.provider);\r\n          }
         } catch (err) {
           const msg = String(err?.message || err || 'Sign-in failed');
           window.alert(`Sign-in failed.\n\n${msg}`);
@@ -800,4 +797,5 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./service-worker.js').catch(() => {});
   });
 }
+
 
