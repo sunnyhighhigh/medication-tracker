@@ -1,4 +1,6 @@
-﻿const medicineForm = document.getElementById('medicineForm');
+﻿import { FIREBASE_CONFIG } from './firebase-config.js';
+
+const medicineForm = document.getElementById('medicineForm');
 const medicineInput = document.getElementById('medicineInput');
 const timeInput = document.getElementById('timeInput');
 const medicineList = document.getElementById('medicineList');
@@ -7,8 +9,24 @@ const summary = document.getElementById('summary');
 const todayLabel = document.getElementById('todayLabel');
 const resetTodayBtn = document.getElementById('resetTodayBtn');
 
+const exportBtn = document.getElementById('exportBtn');
+const importBtn = document.getElementById('importBtn');
+const importModal = document.getElementById('importModal');
+const importTextarea = document.getElementById('importTextarea');
+const confirmImportBtn = document.getElementById('confirmImportBtn');
+const cancelImportBtn = document.getElementById('cancelImportBtn');
+
+const signInBtn = document.getElementById('signInBtn');
+const signOutBtn = document.getElementById('signOutBtn');
+const userLabel = document.getElementById('userLabel');
+
 const STORAGE_KEY = 'medication-tracker.v1';
+const DEVICE_ID_KEY = 'medication-tracker.deviceId';
 const TIME_OPTIONS = ['morning', 'afternoon', 'evening'];
+
+const FIREBASE_SDK_VERSION = '10.12.5';
+
+let editingMedicineId = null;
 
 function makeId() {
   if (window.crypto && typeof crypto.randomUUID === 'function') {
@@ -17,6 +35,22 @@ function makeId() {
 
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
+
+function getOrCreateDeviceId() {
+  try {
+    const existing = localStorage.getItem(DEVICE_ID_KEY);
+    if (existing) return existing;
+
+    const created = makeId();
+    localStorage.setItem(DEVICE_ID_KEY, created);
+    return created;
+  } catch {
+    return makeId();
+  }
+}
+
+const deviceId = getOrCreateDeviceId();
+const isIphone = /\biPhone\b/i.test(navigator.userAgent);
 
 function normalizeTime(value) {
   if (typeof value !== 'string') return 'morning';
@@ -57,35 +91,35 @@ function sanitizeMedicines(medicines) {
     }));
 }
 
-function loadState() {
+function normalizeState(loaded) {
   const today = getTodayKey();
+  const storedDate = typeof loaded?.date === 'string' ? loaded.date : today;
+  const safeMedicines = sanitizeMedicines(loaded?.medicines);
 
+  if (storedDate !== today) {
+    safeMedicines.forEach((m) => {
+      m.taken = false;
+    });
+
+    return { date: today, medicines: safeMedicines };
+  }
+
+  return { date: storedDate, medicines: safeMedicines };
+}
+
+function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-
-    if (!raw) {
-      return { date: today, medicines: [] };
-    }
+    if (!raw) return normalizeState({ date: getTodayKey(), medicines: [] });
 
     const parsed = JSON.parse(raw);
-    const storedDate = typeof parsed?.date === 'string' ? parsed.date : today;
-    const safeMedicines = sanitizeMedicines(parsed?.medicines);
-
-    if (storedDate !== today) {
-      safeMedicines.forEach((m) => {
-        m.taken = false;
-      });
-
-      return { date: today, medicines: safeMedicines };
-    }
-
-    return { date: storedDate, medicines: safeMedicines };
+    return normalizeState(parsed);
   } catch {
-    return { date: today, medicines: [] };
+    return normalizeState({ date: getTodayKey(), medicines: [] });
   }
 }
 
-function saveState() {
+function saveLocalState() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {
@@ -93,11 +127,49 @@ function saveState() {
   }
 }
 
+function isFirebaseConfigured() {
+  const cfg = FIREBASE_CONFIG;
+  if (!cfg || typeof cfg !== 'object') return false;
+  const requiredKeys = ['apiKey', 'authDomain', 'projectId', 'appId'];
+  for (const k of requiredKeys) {
+    const v = String(cfg[k] ?? '').trim();
+    if (!v) return false;
+    if (v.startsWith('PASTE_')) return false;
+  }
+  return true;
+}
+
+const cloud = {
+  available: isFirebaseConfigured(),
+  connected: false,
+  applyingRemote: false,
+  lastRemoteUpdatedAtMs: 0,
+  user: null,
+
+  sdk: null,
+  auth: null,
+  db: null,
+  userDocRef: null,
+  unsubscribe: null,
+
+  pushTimer: null,
+  inFlight: false,
+};
+
 function updateHeader() {
   const today = getTodayKey();
+  let cloudLabel = '';
+
+  if (!cloud.available) {
+    cloudLabel = ' · Cloud: Off';
+  } else if (!cloud.user) {
+    cloudLabel = ' · Cloud: Sign in';
+  } else {
+    cloudLabel = cloud.connected ? ' · Cloud: On' : ' · Cloud: Connecting';
+  }
 
   if (todayLabel) {
-    todayLabel.textContent = `Today: ${today}`;
+    todayLabel.textContent = `Today: ${today}${cloudLabel}`;
   }
 }
 
@@ -133,18 +205,67 @@ function renderMedicines() {
 
   emptyState.style.display = 'none';
 
-  state.medicines.forEach((medicine) => {
+  const medicinesForDisplay = state.medicines
+    .map((medicine, index) => ({ medicine, index }))
+    .sort((a, b) => {
+      const aRank = TIME_OPTIONS.indexOf(normalizeTime(a.medicine.time));
+      const bRank = TIME_OPTIONS.indexOf(normalizeTime(b.medicine.time));
+      if (aRank !== bRank) return aRank - bRank;
+      return a.index - b.index;
+    })
+    .map(({ medicine }) => medicine);
+
+  medicinesForDisplay.forEach((medicine) => {
+    const isEditing = medicine.id === editingMedicineId;
+
     const listItem = document.createElement('li');
     listItem.className = `medicine-item ${medicine.taken ? 'taken' : ''}`;
 
     const leftSide = document.createElement('div');
+    leftSide.className = 'medicine-left';
 
     const nameRow = document.createElement('div');
     nameRow.className = 'name-row';
 
-    const name = document.createElement('div');
-    name.className = 'medicine-name';
-    name.textContent = medicine.name;
+    let nameNode;
+    let nameInput;
+
+    if (isEditing) {
+      nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.className = 'name-edit-input';
+      nameInput.id = `edit-name-${medicine.id}`;
+      nameInput.value = medicine.name;
+      nameInput.setAttribute('aria-label', `Edit medicine name for ${medicine.name}`);
+      nameInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          editingMedicineId = null;
+          renderMedicines();
+          return;
+        }
+
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          const trimmed = nameInput.value.trim();
+          if (!trimmed) return;
+          medicine.name = trimmed;
+          editingMedicineId = null;
+          saveState();
+          renderMedicines();
+        }
+      });
+      nameNode = nameInput;
+
+      requestAnimationFrame(() => {
+        nameInput.focus();
+        nameInput.select();
+      });
+    } else {
+      const name = document.createElement('div');
+      name.className = 'medicine-name';
+      name.textContent = medicine.name;
+      nameNode = name;
+    }
 
     const tag = document.createElement('span');
     tag.className = 'tag';
@@ -166,11 +287,11 @@ function renderMedicines() {
 
     timeSelect.addEventListener('change', () => {
       medicine.time = normalizeTime(timeSelect.value);
-      saveState();
       tag.textContent = formatTimeLabel(medicine.time);
+      saveState();
     });
 
-    nameRow.appendChild(name);
+    nameRow.appendChild(nameNode);
     nameRow.appendChild(tag);
     nameRow.appendChild(timeSelect);
 
@@ -181,23 +302,68 @@ function renderMedicines() {
     leftSide.appendChild(nameRow);
     leftSide.appendChild(status);
 
-    const completeButton = document.createElement('button');
-    completeButton.type = 'button';
-    completeButton.textContent = medicine.taken ? 'Completed' : 'Mark as Taken';
-    completeButton.disabled = medicine.taken;
-    completeButton.setAttribute(
-      'aria-label',
-      medicine.taken ? `Completed: ${medicine.name}` : `Mark ${medicine.name} as taken`
-    );
+    const actions = document.createElement('div');
+    actions.className = 'medicine-actions';
 
-    completeButton.addEventListener('click', () => {
-      medicine.taken = true;
-      saveState();
-      renderMedicines();
-    });
+    if (isEditing) {
+      const saveButton = document.createElement('button');
+      saveButton.type = 'button';
+      saveButton.className = 'mini';
+      saveButton.textContent = 'Save';
+      saveButton.setAttribute('aria-label', `Save changes for ${medicine.name}`);
+      saveButton.addEventListener('click', () => {
+        const trimmed = String(nameInput?.value ?? '').trim();
+        if (!trimmed) return;
+        medicine.name = trimmed;
+        editingMedicineId = null;
+        saveState();
+        renderMedicines();
+      });
+
+      const cancelButton = document.createElement('button');
+      cancelButton.type = 'button';
+      cancelButton.className = 'mini secondary';
+      cancelButton.textContent = 'Cancel';
+      cancelButton.setAttribute('aria-label', `Cancel editing for ${medicine.name}`);
+      cancelButton.addEventListener('click', () => {
+        editingMedicineId = null;
+        renderMedicines();
+      });
+
+      actions.appendChild(saveButton);
+      actions.appendChild(cancelButton);
+    } else {
+      const editButton = document.createElement('button');
+      editButton.type = 'button';
+      editButton.className = 'mini secondary';
+      editButton.textContent = 'Edit';
+      editButton.setAttribute('aria-label', `Edit ${medicine.name}`);
+      editButton.addEventListener('click', () => {
+        editingMedicineId = medicine.id;
+        renderMedicines();
+      });
+
+      const completeButton = document.createElement('button');
+      completeButton.type = 'button';
+      completeButton.textContent = medicine.taken ? 'Completed' : 'Mark as Taken';
+      completeButton.disabled = medicine.taken;
+      completeButton.setAttribute(
+        'aria-label',
+        medicine.taken ? `Completed: ${medicine.name}` : `Mark ${medicine.name} as taken`
+      );
+
+      completeButton.addEventListener('click', () => {
+        medicine.taken = true;
+        saveState();
+        renderMedicines();
+      });
+
+      actions.appendChild(editButton);
+      actions.appendChild(completeButton);
+    }
 
     listItem.appendChild(leftSide);
-    listItem.appendChild(completeButton);
+    listItem.appendChild(actions);
     medicineList.appendChild(listItem);
   });
 
@@ -206,7 +372,7 @@ function renderMedicines() {
 }
 
 function addMedicine(name, time) {
-  const trimmed = name.trim();
+  const trimmed = String(name ?? '').trim();
   if (!trimmed) return;
 
   state.medicines.push({
@@ -230,14 +396,306 @@ function resetToday() {
   renderMedicines();
 }
 
+function openImportModal() {
+  if (!importModal) return;
+  importModal.hidden = false;
+  if (importTextarea) {
+    importTextarea.value = '';
+    importTextarea.focus();
+  }
+}
+
+function closeImportModal() {
+  if (!importModal) return;
+  importModal.hidden = true;
+}
+
+function parseImportedMedicines(rawText) {
+  const trimmed = String(rawText ?? '').trim();
+  if (!trimmed) return [];
+
+  const parsed = JSON.parse(trimmed);
+
+  if (Array.isArray(parsed)) {
+    return sanitizeMedicines(parsed);
+  }
+
+  if (parsed && typeof parsed === 'object' && Array.isArray(parsed.medicines)) {
+    return sanitizeMedicines(parsed.medicines);
+  }
+
+  throw new Error('Invalid import format');
+}
+
+function applyRemoteState(remoteState, updatedAtMs, sourceDeviceId) {
+  if (sourceDeviceId && sourceDeviceId === deviceId) {
+    cloud.lastRemoteUpdatedAtMs = Math.max(cloud.lastRemoteUpdatedAtMs, updatedAtMs || 0);
+    return;
+  }
+
+  const next = normalizeState(remoteState);
+
+  cloud.applyingRemote = true;
+  try {
+    editingMedicineId = null;
+    state = next;
+    saveLocalState();
+    renderMedicines();
+  } finally {
+    cloud.applyingRemote = false;
+  }
+
+  cloud.lastRemoteUpdatedAtMs = Math.max(cloud.lastRemoteUpdatedAtMs, updatedAtMs || 0);
+  updateHeader();
+}
+
+function queueCloudPush() {
+  if (!cloud.available || !cloud.user || !cloud.userDocRef || !cloud.sdk) {
+    updateHeader();
+    return;
+  }
+
+  if (cloud.applyingRemote) {
+    updateHeader();
+    return;
+  }
+
+  if (cloud.pushTimer) {
+    clearTimeout(cloud.pushTimer);
+  }
+
+  cloud.pushTimer = setTimeout(() => {
+    cloud.pushTimer = null;
+    pushStateToCloud().catch(() => {});
+  }, 250);
+
+  updateHeader();
+}
+
+async function pushStateToCloud() {
+  if (cloud.inFlight || !cloud.userDocRef || !cloud.sdk) return;
+  cloud.inFlight = true;
+
+  try {
+    const { setDoc, serverTimestamp } = cloud.sdk;
+    await setDoc(
+      cloud.userDocRef,
+      {
+        schemaVersion: 1,
+        state,
+        updatedAtMs: Date.now(),
+        updatedAt: serverTimestamp(),
+        sourceDeviceId: deviceId,
+      },
+      { merge: true }
+    );
+  } finally {
+    cloud.inFlight = false;
+  }
+}
+
+function saveState() {
+  saveLocalState();
+  queueCloudPush();
+}
+
+function setAuthUi(user) {
+  if (signInBtn) {
+    signInBtn.hidden = Boolean(user);
+    signInBtn.disabled = !cloud.available;
+  }
+
+  if (signOutBtn) {
+    signOutBtn.hidden = !user;
+  }
+
+  if (userLabel) {
+    if (!cloud.available) {
+      userLabel.textContent = 'Cloud sync not configured';
+    } else if (!user) {
+      userLabel.textContent = '';
+    } else {
+      const name = user.displayName || user.email || 'Signed in';
+      userLabel.textContent = name;
+    }
+  }
+}
+
+async function ensureUserDocExists() {
+  if (!cloud.userDocRef || !cloud.sdk) return;
+
+  const { getDoc, setDoc, serverTimestamp } = cloud.sdk;
+  const snap = await getDoc(cloud.userDocRef);
+
+  if (snap.exists()) return;
+
+  // First time signing in on this device: seed cloud with whatever is currently saved locally.
+  const seeded = normalizeState(state);
+  await setDoc(cloud.userDocRef, {
+    schemaVersion: 1,
+    state: seeded,
+    updatedAtMs: Date.now(),
+    updatedAt: serverTimestamp(),
+    sourceDeviceId: deviceId,
+  });
+}
+
+function teardownCloudListener() {
+  if (cloud.unsubscribe) {
+    cloud.unsubscribe();
+    cloud.unsubscribe = null;
+  }
+  cloud.userDocRef = null;
+  cloud.connected = false;
+  cloud.lastRemoteUpdatedAtMs = 0;
+}
+
+async function handleSignedIn(user) {
+  cloud.user = user;
+  setAuthUi(user);
+
+  const { doc, onSnapshot } = cloud.sdk;
+  cloud.userDocRef = doc(cloud.db, 'users', user.uid);
+
+  teardownCloudListener();
+  cloud.userDocRef = doc(cloud.db, 'users', user.uid);
+
+  cloud.unsubscribe = onSnapshot(
+    cloud.userDocRef,
+    (snap) => {
+      cloud.connected = true;
+      updateHeader();
+
+      if (!snap.exists()) return;
+
+      const data = snap.data();
+      const updatedAtMs = typeof data?.updatedAtMs === 'number' ? data.updatedAtMs : 0;
+      if (updatedAtMs && updatedAtMs <= cloud.lastRemoteUpdatedAtMs) return;
+
+      applyRemoteState(data?.state, updatedAtMs, data?.sourceDeviceId);
+    },
+    () => {
+      cloud.connected = false;
+      updateHeader();
+    }
+  );
+
+  try {
+    await ensureUserDocExists();
+  } catch {
+    // ignore
+  }
+}
+
+async function handleSignedOut() {
+  cloud.user = null;
+  teardownCloudListener();
+  setAuthUi(null);
+  updateHeader();
+}
+
+async function initCloud() {
+  setAuthUi(null);
+  updateHeader();
+
+  if (!cloud.available) return;
+
+  try {
+    const appModule = await import(
+      `https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-app.js`
+    );
+    const authModule = await import(
+      `https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-auth.js`
+    );
+    const firestoreModule = await import(
+      `https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-firestore.js`
+    );
+
+    const { initializeApp } = appModule;
+    const {
+      getAuth,
+      onAuthStateChanged,
+      GoogleAuthProvider,
+      signInWithPopup,
+      signInWithRedirect,
+      getRedirectResult,
+      signOut,
+    } = authModule;
+    const { getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp } = firestoreModule;
+
+    cloud.sdk = { doc, getDoc, setDoc, onSnapshot, serverTimestamp, signOut };
+
+    const app = initializeApp(FIREBASE_CONFIG);
+    cloud.auth = getAuth(app);
+    cloud.db = getFirestore(app);
+    cloud.provider = new GoogleAuthProvider();
+
+    if (signInBtn) {
+      signInBtn.addEventListener('click', async () => {
+        try {
+          if (isIphone) {
+            await signInWithRedirect(cloud.auth, cloud.provider);
+          } else {
+            await signInWithPopup(cloud.auth, cloud.provider);
+          }
+        } catch (err) {
+          const msg = String(err?.message || err || 'Sign-in failed');
+          window.alert(`Sign-in failed.\n\n${msg}`);
+        }
+      });
+    }
+
+    if (signOutBtn) {
+      signOutBtn.addEventListener('click', async () => {
+        try {
+          await signOut(cloud.auth);
+        } catch {
+          // ignore
+        }
+      });
+    }
+
+    // If we used redirect sign-in (mobile), this finishes the auth flow.
+    try {
+      await getRedirectResult(cloud.auth);
+    } catch {
+      // ignore
+    }
+
+    onAuthStateChanged(cloud.auth, (user) => {
+      if (user) {
+        handleSignedIn(user).catch(() => {
+          cloud.connected = false;
+          updateHeader();
+        });
+      } else {
+        handleSignedOut().catch(() => {});
+      }
+    });
+  } catch (err) {
+    cloud.available = false;
+    setAuthUi(null);
+    updateHeader();
+
+    const msg = String(err?.message || err || 'Cloud sync failed to initialize');
+    if (userLabel) {
+      userLabel.textContent = 'Cloud sync unavailable';
+    }
+
+    // Helpful for debugging CDN blocks / offline.
+    console.error(msg);
+  }
+}
+
 let state = loadState();
 state.date = getTodayKey();
-saveState();
+saveLocalState();
 
 updateHeader();
 renderMedicines();
+initCloud();
 
-medicineForm.addEventListener('submit', (event) => {
+medicineForm?.addEventListener('submit', (event) => {
   event.preventDefault();
 
   addMedicine(medicineInput.value, timeInput?.value);
@@ -257,9 +715,81 @@ if (resetTodayBtn) {
   });
 }
 
+if (exportBtn) {
+  exportBtn.addEventListener('click', async () => {
+    const payload = {
+      date: getTodayKey(),
+      medicines: state.medicines,
+    };
+
+    const text = JSON.stringify(payload, null, 2);
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        window.alert('Export copied to clipboard.');
+        return;
+      }
+    } catch {
+      // fallback below
+    }
+
+    window.prompt('Copy this JSON export:', text);
+  });
+}
+
+if (importBtn) {
+  importBtn.addEventListener('click', () => {
+    openImportModal();
+  });
+}
+
+if (cancelImportBtn) {
+  cancelImportBtn.addEventListener('click', () => {
+    closeImportModal();
+  });
+}
+
+if (importModal) {
+  importModal.addEventListener('click', (event) => {
+    if (event.target === importModal) {
+      closeImportModal();
+    }
+  });
+}
+
+if (confirmImportBtn) {
+  confirmImportBtn.addEventListener('click', () => {
+    try {
+      const imported = parseImportedMedicines(importTextarea?.value);
+
+      const ok = window.confirm(
+        `Import ${imported.length} medicine(s)? This will replace your current list on this device.`
+      );
+      if (!ok) return;
+
+      editingMedicineId = null;
+      state.medicines = imported;
+      state.date = getTodayKey();
+      saveState();
+      renderMedicines();
+      closeImportModal();
+    } catch {
+      window.alert('Import failed. Make sure you paste valid JSON exported from the app.');
+    }
+  });
+}
+
+window.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape') return;
+  if (!importModal || importModal.hidden) return;
+  closeImportModal();
+});
+
 window.addEventListener('storage', (event) => {
   if (event.key !== STORAGE_KEY) return;
 
+  editingMedicineId = null;
   state = loadState();
   updateHeader();
   renderMedicines();
@@ -270,3 +800,4 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./service-worker.js').catch(() => {});
   });
 }
+

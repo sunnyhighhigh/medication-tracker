@@ -36,3 +36,17 @@ This is a beginner-friendly web app to track your daily medicines.
 - Add “time of day” (morning/afternoon/night) for each medicine.
 - Add edit/delete for medicines.
 - Add a history view (what was taken on previous dates).
+
+## Private Cloud Sync (PC + iPhone)
+
+This project can sync your medicine list across devices **privately** using Google sign-in + a database.
+
+- Your GitHub Pages site stays public (it only hosts the app files).
+- Your medication data is stored in your private account in Firestore.
+
+Setup instructions: see `FIREBASE_SETUP.md`.
+
+## Export/Import (optional backup)
+
+Even with cloud sync, Export/Import can be useful as a backup.
+

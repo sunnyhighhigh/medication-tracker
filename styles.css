@@ -255,7 +255,12 @@ button.secondary:hover {
     align-items: flex-start;
   }
 
-  .form-row {
+  
+
+  .auth-row {
+    justify-content: flex-start;
+  }
+.form-row {
     flex-direction: column;
   }
 
@@ -272,6 +277,81 @@ button.secondary:hover {
   gap: 10px;
   flex-wrap: wrap;
   margin: 8px 0 12px 0;
+}
+
+
+
+.medicine-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.medicine-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+button.mini {
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.name-edit-input {
+  padding: 6px 10px;
+  font-size: 14px;
+}
+
+
+.modal[hidden] {
+  display: none;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 50;
+}
+
+.modal-content {
+  width: min(640px, 100%);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 24px 60px rgba(2, 6, 23, 0.28);
+}
+
+.modal-content h3 {
+  margin: 0 0 8px 0;
+}
+
+.modal-help {
+  margin: 0 0 10px 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+#importTextarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 160px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
 }
 
 
