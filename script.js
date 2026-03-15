@@ -210,13 +210,13 @@ function updateHeader() {
 
   if (!cloud.available) {
     cloudLabel = ' · Cloud: Off';
-    setStatus('Status: Cloud not configured (v14)');
+    setStatus('Status: Cloud not configured (v15)');
   } else if (!cloud.user) {
     cloudLabel = ' · Cloud: Sign in';
-    setStatus('Status: Signed out (v14)');
+    setStatus('Status: Signed out (v15)');
   } else {
     cloudLabel = cloud.connected ? ' · Cloud: On' : ' · Cloud: Connecting';
-    setStatus(cloud.connected ? 'Status: Signed in + synced (v14)' : 'Status: Signed in, connecting (v14)');
+    setStatus(cloud.connected ? 'Status: Signed in + synced (v15)' : 'Status: Signed in, connecting (v15)');
   }
 
   if (todayLabel) {
@@ -647,11 +647,14 @@ function initCloud() {
     cloud.auth = firebase.auth();
     cloud.db = firebase.firestore();
 
-    try {
-      cloud.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-    } catch {
-      // ignore
-    }
+    const persistencePromise = cloud.auth
+      .setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+      .catch((err) => {
+        const msg = String((err && err.message) || err || 'Unable to set persistence');
+        setStatus('Status: Safari blocked sign-in storage (v15).');
+        console.error('setPersistence failed:', msg);
+        throw err;
+      });
 
     const provider = new firebase.auth.GoogleAuthProvider();
     // Finish iOS/Safari redirect sign-in and surface any errors.
@@ -659,7 +662,7 @@ function initCloud() {
       .getRedirectResult()
       .then((result) => {
         if (result && result.user) {
-          setStatus('Status: Signed in (v14)');
+          setStatus('Status: Signed in (v15)');
         }
       })
       .catch((err) => {
@@ -667,14 +670,23 @@ function initCloud() {
         const msg = String((err && err.message) || err || 'Redirect sign-in failed');
         const details = [code, msg].filter(Boolean).join('\n');
         window.alert('Redirect sign-in failed.\n\n' + details);
-        setStatus('Status: Redirect error (v14). ' + (code || msg));
+        setStatus('Status: Redirect error (v15). ' + (code || msg));
       });
-if (signInBtn) {
+
+    if (signInBtn) {
       signInBtn.addEventListener('click', async () => {
         try {
           markAuthAttempt();
 
-          setStatus('Status: Starting Google sign-in (v14)…');
+          try {
+            await persistencePromise;
+          } catch {
+            clearAuthAttempt();
+            window.alert('Safari blocked sign-in.\n\nOn iPhone: Settings > Safari: turn OFF Prevent Cross-Site Tracking, and ensure Cookies are allowed. Then reload and try again.');
+            return;
+          }
+
+          setStatus('Status: Starting Google sign-in (v15)…');
 
           if (isIos || isStandalone) {
             if (isStandalone) {
@@ -722,7 +734,7 @@ if (signInBtn) {
     updateHeader();
 
     const msg = String(err?.message || err || 'Cloud sync failed to initialize');
-    setStatus(`Status: Error (v14). ${msg}`);
+    setStatus(`Status: Error (v15). ${msg}`);
   }
 }
 
@@ -868,5 +880,7 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./service-worker.js').catch(() => {});
   });
 }
+
+
 
 
