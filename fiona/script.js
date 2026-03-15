@@ -1,4 +1,4 @@
-ï»¿window.__appLoaded = true;
+window.__appLoaded = true;
 
 const medicineForm = document.getElementById('medicineForm');
 const medicineInput = document.getElementById('medicineInput');
@@ -15,14 +15,15 @@ const signInBtn = document.getElementById('signInBtn');
 const signOutBtn = document.getElementById('signOutBtn');
 const userLabel = document.getElementById('userLabel');
 
-const STORAGE_KEY = 'medication-tracker.' + PROFILE_ID + '.v2';
-const DEVICE_ID_KEY = 'medication-tracker.deviceId';
-const TIME_OPTIONS = ['morning', 'afternoon', 'evening'];
 const PROFILE_ID = (() => {
   const meta = document.querySelector('meta[name="profile-id"]');
   const raw = meta && meta.content ? meta.content : 'default';
   return String(raw).trim().toLowerCase() || 'default';
 })();
+const STORAGE_KEY = 'medication-tracker.' + PROFILE_ID + '.v2';
+const LEGACY_STORAGE_KEYS = ['medication-tracker.v2', 'medication-tracker.v1'];
+const DEVICE_ID_KEY = 'medication-tracker.deviceId';
+const TIME_OPTIONS = ['morning', 'afternoon', 'evening'];
 
 let editingMedicineId = null;
 
@@ -106,15 +107,40 @@ function normalizeState(loaded) {
 }
 
 function loadState() {
+  const empty = () => normalizeState({ date: getTodayKey(), medicines: [] });
+
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return normalizeState({ date: getTodayKey(), medicines: [] });
-
-    const parsed = JSON.parse(raw);
-    return normalizeState(parsed);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return normalizeState(parsed);
+    }
   } catch {
-    return normalizeState({ date: getTodayKey(), medicines: [] });
+    // ignore
   }
+
+  // Migrate from older versions (single-key storage).
+  for (const legacyKey of LEGACY_STORAGE_KEYS) {
+    try {
+      const legacyRaw = localStorage.getItem(legacyKey);
+      if (!legacyRaw) continue;
+
+      const parsed = JSON.parse(legacyRaw);
+      const migrated = normalizeState(parsed);
+
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+      } catch {
+        // ignore
+      }
+
+      return migrated;
+    } catch {
+      // ignore
+    }
+  }
+
+  return empty();
 }
 
 function saveLocalState() {
@@ -175,12 +201,12 @@ const cloud = {
 function updateHeader() {
   const today = getTodayKey();
   const cloudLabel = !cloud.available
-    ? ' Â· Cloud: Off'
+    ? ' · Cloud: Off'
     : !cloud.user
-      ? ' Â· Cloud: Sign in'
+      ? ' · Cloud: Sign in'
       : cloud.connected
-        ? ' Â· Cloud: On'
-        : ' Â· Cloud: Connecting';
+        ? ' · Cloud: On'
+        : ' · Cloud: Connecting';
 
   if (todayLabel) {
     todayLabel.textContent = `Today: ${today}${cloudLabel}`;
@@ -199,7 +225,7 @@ function updateSummary() {
     return;
   }
 
-  summary.textContent = `${takenCount} taken Â· ${pendingCount} pending`;
+  summary.textContent = `${takenCount} taken · ${pendingCount} pending`;
 }
 
 function renderMedicines() {
@@ -452,6 +478,25 @@ async function ensureUserDocExists() {
 
   const data = snap.data() || {};
   const hasProfile = Boolean(data.profiles && data.profiles[PROFILE_ID]);
+  const hasAnyProfiles = Boolean(data.profiles && Object.keys(data.profiles).length > 0);
+
+  if (!hasProfile && !hasAnyProfiles && Array.isArray(state.medicines) && state.medicines.length > 0) {
+    await cloud.userDocRef.set(
+      {
+        schemaVersion: 2,
+        profiles: {
+          [PROFILE_ID]: {
+            state: normalizeState(state),
+            updatedAtMs: Date.now(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            sourceDeviceId: deviceId,
+          },
+        },
+      },
+      { merge: true }
+    );
+    return;
+  }
 
   // If this user already has legacy data under state, migrate it into this profile.
   if (!hasProfile && data.state && typeof data.state === 'object') {
