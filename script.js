@@ -18,7 +18,7 @@ const cancelImportBtn = document.getElementById('cancelImportBtn');
 
 const signInBtn = document.getElementById('signInBtn');
 const signOutBtn = document.getElementById('signOutBtn');
-const userLabel = document.getElementById('userLabel');\r\nconst statusLabel = document.getElementById('statusLabel');
+const userLabel = document.getElementById('userLabel');\r\nconst statusLabel = document.getElementById('statusLabel');\r\nconst fixCacheBtn = document.getElementById('fixCacheBtn');
 
 const STORAGE_KEY = 'medication-tracker.v1';
 const DEVICE_ID_KEY = 'medication-tracker.deviceId';
@@ -239,7 +239,7 @@ function setStatus(message) {
   const today = getTodayKey();
   let cloudLabel = '';
 
-  if (!cloud.available) {\r\n    cloudLabel = ' · Cloud: Off';\r\n    setStatus('Status: Cloud not configured (v11)');\r\n  } else if (!cloud.user) {\r\n    cloudLabel = ' · Cloud: Sign in';\r\n    setStatus('Status: Signed out (v11)');\r\n  } else {\r\n    cloudLabel = cloud.connected ? ' · Cloud: On' : ' · Cloud: Connecting';\r\n    setStatus(cloud.connected ? 'Status: Signed in + synced (v11)' : 'Status: Signed in, connecting (v11)');\r\n  }
+  if (!cloud.available) {\r\n    cloudLabel = ' · Cloud: Off';\r\n    setStatus('Status: Cloud not configured (v12)');\r\n  } else if (!cloud.user) {\r\n    cloudLabel = ' · Cloud: Sign in';\r\n    setStatus('Status: Signed out (v12)');\r\n  } else {\r\n    cloudLabel = cloud.connected ? ' · Cloud: On' : ' · Cloud: Connecting';\r\n    setStatus(cloud.connected ? 'Status: Signed in + synced (v12)' : 'Status: Signed in, connecting (v12)');\r\n  }
 
   if (todayLabel) {
     todayLabel.textContent = `Today: ${today}${cloudLabel}`;
@@ -745,16 +745,7 @@ window.addEventListener('keydown', (event) => {
   closeImportModal();
 });
 
-window.addEventListener('storage', (event) => {
-  if (event.key !== STORAGE_KEY) return;
-
-  editingMedicineId = null;
-  state = loadState();
-  updateHeader();
-  renderMedicines();
-});
-
-if ('serviceWorker' in navigator) {
+window.addEventListener('storage', (event) => {\r\n  if (event.key !== STORAGE_KEY) return;\r\n\r\n  editingMedicineId = null;\r\n  state = loadState();\r\n  updateHeader();\r\n  renderMedicines();\r\n});\r\n\r\nif (fixCacheBtn) {\r\n  fixCacheBtn.addEventListener('click', () => {\r\n    resetAppCache().catch(() => {});\r\n  });\r\n}\r\n\r\nif ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./service-worker.js').catch(() => {});
   });
@@ -768,3 +759,26 @@ if ('serviceWorker' in navigator) {
 
 
 
+
+async function resetAppCache() {
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    if (window.caches?.keys) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+  } catch {
+    // ignore
+  }
+
+  const next = `${location.origin}${location.pathname}?v=12&ts=${Date.now()}`;
+  location.replace(next);
+}

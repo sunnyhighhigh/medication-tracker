@@ -53,7 +53,7 @@
           <button id="signOutBtn" type="button" class="secondary" hidden>Sign out</button>
         </div>
         <p id="todayLabel" class="today" aria-live="polite"></p>
-        <p id="statusLabel" class="today" aria-live="polite"></p>
+        <p id="statusLabel" class="today" aria-live="polite"></p>\n        <button id="fixCacheBtn" type="button" class="secondary">Fix Cache</button>
         <button id="resetTodayBtn" type="button" class="secondary">Reset Today</button>
       </div>
     </header>
@@ -104,27 +104,28 @@
   <script>
     (function () {
       const status = document.getElementById('statusLabel');
-      if (status) status.textContent = 'Status: Loading (v11)…';
+      if (status) status.textContent = 'Status: Loading (v12)…';
 
       window.addEventListener('error', (e) => {
         const message = (e && e.message) ? e.message : 'Unknown error';
-        if (status) status.textContent = `Status: Error loading app (v11). ${message}`;
+        if (status) status.textContent = `Status: Error loading app (v12). ${message}`;
       });
 
       window.addEventListener('unhandledrejection', (e) => {
         const reason = e && e.reason ? e.reason : 'Unknown rejection';
         const message = reason && reason.message ? reason.message : String(reason);
-        if (status) status.textContent = `Status: Error (v11). ${message}`;
+        if (status) status.textContent = `Status: Error (v12). ${message}`;
       });
 
       setTimeout(() => {
         if (!window.__appLoaded) {
-          if (status) status.textContent = 'Status: App script did not start (v11). Try disabling content blockers or check network.';
+          if (status) status.textContent = 'Status: App script did not start (v12). Try disabling content blockers or check network.';
         }
       }, 3000);
     })();
   </script>
 
-  <script type="module" src="script.js?v=11"></script>
+  <script type="module" src="script.js?v=12"></script>
 </body>
 </html>
+
