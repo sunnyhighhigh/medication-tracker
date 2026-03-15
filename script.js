@@ -239,7 +239,7 @@ function setStatus(message) {
   const today = getTodayKey();
   let cloudLabel = '';
 
-  if (!cloud.available) {\r\n    cloudLabel = ' · Cloud: Off';\r\n    setStatus('Status: Cloud not configured (v10)');\r\n  } else if (!cloud.user) {\r\n    cloudLabel = ' · Cloud: Sign in';\r\n    setStatus('Status: Signed out (v10)');\r\n  } else {\r\n    cloudLabel = cloud.connected ? ' · Cloud: On' : ' · Cloud: Connecting';\r\n    setStatus(cloud.connected ? 'Status: Signed in + synced (v10)' : 'Status: Signed in, connecting (v10)');\r\n  }
+  if (!cloud.available) {\r\n    cloudLabel = ' · Cloud: Off';\r\n    setStatus('Status: Cloud not configured (v11)');\r\n  } else if (!cloud.user) {\r\n    cloudLabel = ' · Cloud: Sign in';\r\n    setStatus('Status: Signed out (v11)');\r\n  } else {\r\n    cloudLabel = cloud.connected ? ' · Cloud: On' : ' · Cloud: Connecting';\r\n    setStatus(cloud.connected ? 'Status: Signed in + synced (v11)' : 'Status: Signed in, connecting (v11)');\r\n  }
 
   if (todayLabel) {
     todayLabel.textContent = `Today: ${today}${cloudLabel}`;
@@ -759,6 +759,7 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./service-worker.js').catch(() => {});
   });
 }
+
 
 
 

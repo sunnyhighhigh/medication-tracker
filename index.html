@@ -47,11 +47,13 @@
       </div>
 
       <div class="header-actions">
-              <div class="auth-row" aria-label="Account">
-        <span id="userLabel" class="user" aria-live="polite"></span>
-        <button id="signInBtn" type="button" class="secondary">Sign in</button>
-        <button id="signOutBtn" type="button" class="secondary" hidden>Sign out</button>
-      </div><p id="todayLabel" class="today" aria-live="polite"></p>\r\n        <p id="statusLabel" class="today" aria-live="polite"></p>
+        <div class="auth-row" aria-label="Account">
+          <span id="userLabel" class="user" aria-live="polite"></span>
+          <button id="signInBtn" type="button" class="secondary">Sign in</button>
+          <button id="signOutBtn" type="button" class="secondary" hidden>Sign out</button>
+        </div>
+        <p id="todayLabel" class="today" aria-live="polite"></p>
+        <p id="statusLabel" class="today" aria-live="polite"></p>
         <button id="resetTodayBtn" type="button" class="secondary">Reset Today</button>
       </div>
     </header>
@@ -86,7 +88,6 @@
     </section>
   </main>
 
-  
   <div id="importModal" class="modal" hidden>
     <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="importTitle">
       <h3 id="importTitle">Import medicines</h3>
@@ -98,26 +99,32 @@
         <button id="cancelImportBtn" type="button" class="secondary">Cancel</button>
       </div>
     </div>
-  </div>  <script>
+  </div>
+
+  <script>
     (function () {
       const status = document.getElementById('statusLabel');
-      if (status) status.textContent = 'Status: Loading (v10)…';
+      if (status) status.textContent = 'Status: Loading (v11)…';
 
       window.addEventListener('error', (e) => {
         const message = (e && e.message) ? e.message : 'Unknown error';
-        if (status) status.textContent = `Status: Error loading app (v10). ${message}`;
+        if (status) status.textContent = `Status: Error loading app (v11). ${message}`;
       });
 
       window.addEventListener('unhandledrejection', (e) => {
         const reason = e && e.reason ? e.reason : 'Unknown rejection';
         const message = reason && reason.message ? reason.message : String(reason);
-        if (status) status.textContent = `Status: Error (v10). ${message}`;
+        if (status) status.textContent = `Status: Error (v11). ${message}`;
       });
+
+      setTimeout(() => {
+        if (!window.__appLoaded) {
+          if (status) status.textContent = 'Status: App script did not start (v11). Try disabling content blockers or check network.';
+        }
+      }, 3000);
     })();
   </script>
+
+  <script type="module" src="script.js?v=11"></script>
 </body>
 </html>
-
-
-
-
