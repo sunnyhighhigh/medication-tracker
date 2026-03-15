@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = 'medication-tracker-cache-v16';
+﻿const CACHE_NAME = 'medication-tracker-cache-v17';
 
 const CORE_ASSETS = [
   './index.html',
@@ -41,7 +41,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Avoid caching cross-origin requests (e.g., Firebase SDK files).
+  // Avoid caching cross-origin requests (Firebase CDN, etc.).
   try {
     const url = new URL(request.url);
     if (url.origin !== self.location.origin) {
@@ -51,7 +51,6 @@ self.addEventListener('fetch', (event) => {
     // ignore
   }
 
-  // Cache-first for same-origin static assets.
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) return cached;
@@ -66,6 +65,3 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
-
-
-

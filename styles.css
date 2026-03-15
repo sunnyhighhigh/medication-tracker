@@ -94,6 +94,23 @@ h1 {
   gap: 10px;
 }
 
+.auth-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.user {
+  color: var(--muted);
+  font-size: 13px;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .today {
   margin: 4px 0 0 0;
   color: var(--muted);
@@ -245,41 +262,10 @@ button.secondary:hover {
   border: 0;
 }
 
-@media (max-width: 520px) {
-  .header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .header-actions {
-    align-items: flex-start;
-  }
-
-  
-
-  .auth-row {
-    justify-content: flex-start;
-  }
-.form-row {
-    flex-direction: column;
-  }
-
-  button {
-    width: 100%;
-  }
-}
 .time-edit {
   padding: 6px 10px;
   font-size: 14px;
 }
-.toolbar {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin: 8px 0 12px 0;
-}
-
-
 
 .medicine-left {
   flex: 1;
@@ -304,60 +290,25 @@ button.mini {
   font-size: 14px;
 }
 
+@media (max-width: 520px) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+  }
 
-.modal[hidden] {
-  display: none;
+  .header-actions {
+    align-items: flex-start;
+  }
+
+  .auth-row {
+    justify-content: flex-start;
+  }
+
+  .form-row {
+    flex-direction: column;
+  }
+
+  button {
+    width: 100%;
+  }
 }
-
-.modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  z-index: 50;
-}
-
-.modal-content {
-  width: min(640px, 100%);
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 14px;
-  box-shadow: 0 24px 60px rgba(2, 6, 23, 0.28);
-}
-
-.modal-content h3 {
-  margin: 0 0 8px 0;
-}
-
-.modal-help {
-  margin: 0 0 10px 0;
-  color: var(--muted);
-  font-size: 14px;
-}
-
-#importTextarea {
-  width: 100%;
-  resize: vertical;
-  min-height: 160px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 10px;
-  flex-wrap: wrap;
-}
-
-
-
-#fixCacheBtn {
-  padding: 8px 10px;
-  font-size: 13px;
-}
-
