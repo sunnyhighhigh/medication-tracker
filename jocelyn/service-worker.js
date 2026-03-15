@@ -1,4 +1,4 @@
-﻿function getScopeKey() {
+function getScopeKey() {
   try {
     const path = new URL(self.registration.scope).pathname;
     return String(path)
@@ -10,7 +10,7 @@
   }
 }
 
-const CACHE_NAME = 'medication-tracker-cache-' + getScopeKey() + '-v18';
+const CACHE_NAME = 'medication-tracker-cache-' + getScopeKey() + '-v19';
 
 const CORE_ASSETS = [
   './index.html',
