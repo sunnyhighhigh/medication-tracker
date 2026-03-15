@@ -1,7 +1,8 @@
 ﻿// Firebase config is not a secret, but it is project-specific.
-// Create a Firebase project and paste your web app config values here.
+// It is loaded in the browser and used to initialize Firebase.
 // See FIREBASE_SETUP.md for step-by-step setup (Google sign-in + Firestore rules).
-export const FIREBASE_CONFIG = {
+
+window.FIREBASE_CONFIG = {
   apiKey: 'AIzaSyAaytSb0913zifGDrrn_58no9IFO5qApSc',
   authDomain: 'medication-tracker-62556.firebaseapp.com',
   projectId: 'medication-tracker-62556',

@@ -51,9 +51,10 @@
           <span id="userLabel" class="user" aria-live="polite"></span>
           <button id="signInBtn" type="button" class="secondary">Sign in</button>
           <button id="signOutBtn" type="button" class="secondary" hidden>Sign out</button>
+          <button id="fixCacheBtn" type="button" class="secondary">Fix Cache</button>
         </div>
         <p id="todayLabel" class="today" aria-live="polite"></p>
-        <p id="statusLabel" class="today" aria-live="polite"></p>\n        <button id="fixCacheBtn" type="button" class="secondary">Fix Cache</button>
+        <p id="statusLabel" class="today" aria-live="polite"></p>
         <button id="resetTodayBtn" type="button" class="secondary">Reset Today</button>
       </div>
     </header>
@@ -104,28 +105,31 @@
   <script>
     (function () {
       const status = document.getElementById('statusLabel');
-      if (status) status.textContent = 'Status: Loading (v12)…';
+      if (status) status.textContent = 'Status: Loading (v13)…';
 
       window.addEventListener('error', (e) => {
         const message = (e && e.message) ? e.message : 'Unknown error';
-        if (status) status.textContent = `Status: Error loading app (v12). ${message}`;
+        if (status) status.textContent = `Status: Error loading app (v13). ${message}`;
       });
 
       window.addEventListener('unhandledrejection', (e) => {
         const reason = e && e.reason ? e.reason : 'Unknown rejection';
         const message = reason && reason.message ? reason.message : String(reason);
-        if (status) status.textContent = `Status: Error (v12). ${message}`;
+        if (status) status.textContent = `Status: Error (v13). ${message}`;
       });
 
       setTimeout(() => {
         if (!window.__appLoaded) {
-          if (status) status.textContent = 'Status: App script did not start (v12). Try disabling content blockers or check network.';
+          if (status) status.textContent = 'Status: App script did not start (v13). Disable content blockers and ensure JavaScript is enabled.';
         }
       }, 3000);
     })();
   </script>
 
-  <script type="module" src="script.js?v=12"></script>
+  <script src="firebase-config.js?v=13"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+  <script src="script.js?v=13"></script>
 </body>
 </html>
-

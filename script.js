@@ -1,4 +1,4 @@
-﻿import { FIREBASE_CONFIG } from './firebase-config.js';
+﻿window.__appLoaded = true;
 
 const medicineForm = document.getElementById('medicineForm');
 const medicineInput = document.getElementById('medicineInput');
@@ -18,15 +18,22 @@ const cancelImportBtn = document.getElementById('cancelImportBtn');
 
 const signInBtn = document.getElementById('signInBtn');
 const signOutBtn = document.getElementById('signOutBtn');
-const userLabel = document.getElementById('userLabel');\r\nconst statusLabel = document.getElementById('statusLabel');\r\nconst fixCacheBtn = document.getElementById('fixCacheBtn');
+const userLabel = document.getElementById('userLabel');
+const statusLabel = document.getElementById('statusLabel');
+const fixCacheBtn = document.getElementById('fixCacheBtn');
 
 const STORAGE_KEY = 'medication-tracker.v1';
 const DEVICE_ID_KEY = 'medication-tracker.deviceId';
 const TIME_OPTIONS = ['morning', 'afternoon', 'evening'];
 
-const FIREBASE_SDK_VERSION = '10.12.5';
+const AUTH_ATTEMPT_KEY = 'medication-tracker.authAttemptAt';
 
 let editingMedicineId = null;
+
+function setStatus(message) {
+  if (!statusLabel) return;
+  statusLabel.textContent = message;
+}
 
 function makeId() {
   if (window.crypto && typeof crypto.randomUUID === 'function') {
@@ -50,12 +57,8 @@ function getOrCreateDeviceId() {
 }
 
 const deviceId = getOrCreateDeviceId();
-const isIos = /\\b(iPad|iPhone|iPod)\\b/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isIos = /\b(iPad|iPhone|iPod)\b/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const isStandalone = window.matchMedia?.('(display-mode: standalone)')?.matches || navigator.standalone === true;
-
-
-const AUTH_ATTEMPT_KEY = 'medication-tracker.authAttemptAt';
-let authHelpShown = false;
 
 function markAuthAttempt() {
   try {
@@ -74,8 +77,6 @@ function clearAuthAttempt() {
 }
 
 function maybeShowAuthHelp() {
-  if (authHelpShown) return;
-
   let attemptAt = 0;
   try {
     attemptAt = Number(localStorage.getItem(AUTH_ATTEMPT_KEY) || 0);
@@ -91,42 +92,15 @@ function maybeShowAuthHelp() {
     return;
   }
 
-  authHelpShown = true;
-
   setTimeout(() => {
-    if (cloud?.user) return;
+    if (cloud.user) return;
 
     window.alert(
-      'Google sign-in started but did not finish.\n\nTry: \n- iPhone Settings > Safari: turn OFF Block All Cookies (and try turning OFF Prevent Cross-Site Tracking).\n- Firebase Console > Authentication > Authorized domains: add sunnyhighhigh.github.io\n- Use Safari (not an in-app browser) and not Private Browsing.\n- If you added to Home Screen, sign in in Safari first.\n\nThen reload and try again.'
+      'Google sign-in started but did not finish.\n\nTry: \n- iPhone Settings > Safari: turn OFF Prevent Cross-Site Tracking.\n- Ensure JavaScript is enabled (Settings > Safari > Advanced).\n- Firebase Console > Authentication > Authorized domains: add sunnyhighhigh.github.io\n- Use Safari (not an in-app browser) and not Private Browsing.\n- If you added to Home Screen, sign in in Safari first.'
     );
-  }, 1200);
+  }, 900);
 }
-function scheduleAuthHelpOnLoad() {
-  // iOS redirect sign-in can return in a different tab/context; localStorage keeps the attempt marker.
-  setTimeout(() => {
-    if (cloud?.user) {
-      clearAuthAttempt();
-      return;
-    }
 
-    let attemptAt = 0;
-    try {
-      attemptAt = Number(localStorage.getItem(AUTH_ATTEMPT_KEY) || 0);
-    } catch {
-      attemptAt = 0;
-    }
-
-    if (!attemptAt) return;
-
-    const ageMs = Date.now() - attemptAt;
-    if (ageMs > 2 * 60 * 1000) {
-      clearAuthAttempt();
-      return;
-    }
-
-    maybeShowAuthHelp();
-  }, 2000);
-}
 function normalizeTime(value) {
   if (typeof value !== 'string') return 'morning';
   const lower = value.toLowerCase();
@@ -198,12 +172,12 @@ function saveLocalState() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {
-    // If localStorage is blocked, the app still works in-memory.
+    // ignore
   }
 }
 
 function isFirebaseConfigured() {
-  const cfg = FIREBASE_CONFIG;
+  const cfg = window.FIREBASE_CONFIG;
   if (!cfg || typeof cfg !== 'object') return false;
   const requiredKeys = ['apiKey', 'authDomain', 'projectId', 'appId'];
   for (const k of requiredKeys) {
@@ -221,7 +195,6 @@ const cloud = {
   lastRemoteUpdatedAtMs: 0,
   user: null,
 
-  sdk: null,
   auth: null,
   db: null,
   userDocRef: null,
@@ -231,15 +204,20 @@ const cloud = {
   inFlight: false,
 };
 
-
-function setStatus(message) {
-  if (!statusLabel) return;
-  statusLabel.textContent = message;
-}\r\n
+function updateHeader() {
   const today = getTodayKey();
   let cloudLabel = '';
 
-  if (!cloud.available) {\r\n    cloudLabel = ' · Cloud: Off';\r\n    setStatus('Status: Cloud not configured (v12)');\r\n  } else if (!cloud.user) {\r\n    cloudLabel = ' · Cloud: Sign in';\r\n    setStatus('Status: Signed out (v12)');\r\n  } else {\r\n    cloudLabel = cloud.connected ? ' · Cloud: On' : ' · Cloud: Connecting';\r\n    setStatus(cloud.connected ? 'Status: Signed in + synced (v12)' : 'Status: Signed in, connecting (v12)');\r\n  }
+  if (!cloud.available) {
+    cloudLabel = ' · Cloud: Off';
+    setStatus('Status: Cloud not configured (v13)');
+  } else if (!cloud.user) {
+    cloudLabel = ' · Cloud: Sign in';
+    setStatus('Status: Signed out (v13)');
+  } else {
+    cloudLabel = cloud.connected ? ' · Cloud: On' : ' · Cloud: Connecting';
+    setStatus(cloud.connected ? 'Status: Signed in + synced (v13)' : 'Status: Signed in, connecting (v13)');
+  }
 
   if (todayLabel) {
     todayLabel.textContent = `Today: ${today}${cloudLabel}`;
@@ -523,7 +501,7 @@ function applyRemoteState(remoteState, updatedAtMs, sourceDeviceId) {
 }
 
 function queueCloudPush() {
-  if (!cloud.available || !cloud.user || !cloud.userDocRef || !cloud.sdk) {
+  if (!cloud.available || !cloud.user || !cloud.userDocRef) {
     updateHeader();
     return;
   }
@@ -546,18 +524,16 @@ function queueCloudPush() {
 }
 
 async function pushStateToCloud() {
-  if (cloud.inFlight || !cloud.userDocRef || !cloud.sdk) return;
+  if (cloud.inFlight || !cloud.userDocRef) return;
   cloud.inFlight = true;
 
   try {
-    const { setDoc, serverTimestamp } = cloud.sdk;
-    await setDoc(
-      cloud.userDocRef,
+    await cloud.userDocRef.set(
       {
         schemaVersion: 1,
         state,
         updatedAtMs: Date.now(),
-        updatedAt: serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
         sourceDeviceId: deviceId,
       },
       { merge: true }
@@ -574,6 +550,112 @@ function saveState() {
 
 function setAuthUi(user) {
   if (signInBtn) {
+    signInBtn.hidden = Boolean(user);
+    signInBtn.disabled = !cloud.available;
+  }
+
+  if (signOutBtn) {
+    signOutBtn.hidden = !user;
+  }
+
+  if (userLabel) {
+    if (!cloud.available) {
+      userLabel.textContent = 'Cloud sync not configured';
+    } else if (!user) {
+      userLabel.textContent = '';
+    } else {
+      const name = user.displayName || user.email || 'Signed in';
+      userLabel.textContent = name;
+    }
+  }
+}
+
+async function ensureUserDocExists() {
+  if (!cloud.userDocRef) return;
+
+  const snap = await cloud.userDocRef.get();
+  if (snap.exists) return;
+
+  const seeded = normalizeState(state);
+  await cloud.userDocRef.set({
+    schemaVersion: 1,
+    state: seeded,
+    updatedAtMs: Date.now(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    sourceDeviceId: deviceId,
+  });
+}
+
+function teardownCloudListener() {
+  if (cloud.unsubscribe) {
+    cloud.unsubscribe();
+    cloud.unsubscribe = null;
+  }
+  cloud.userDocRef = null;
+  cloud.connected = false;
+  cloud.lastRemoteUpdatedAtMs = 0;
+}
+
+async function handleSignedIn(user) {
+  cloud.user = user;
+  setAuthUi(user);
+
+  teardownCloudListener();
+  cloud.userDocRef = cloud.db.collection('users').doc(user.uid);
+
+  cloud.unsubscribe = cloud.userDocRef.onSnapshot(
+    (snap) => {
+      cloud.connected = true;
+      updateHeader();
+
+      if (!snap.exists) return;
+
+      const data = snap.data();
+      const updatedAtMs = typeof data?.updatedAtMs === 'number' ? data.updatedAtMs : 0;
+      if (updatedAtMs && updatedAtMs <= cloud.lastRemoteUpdatedAtMs) return;
+
+      applyRemoteState(data?.state, updatedAtMs, data?.sourceDeviceId);
+    },
+    () => {
+      cloud.connected = false;
+      updateHeader();
+    }
+  );
+
+  try {
+    await ensureUserDocExists();
+  } catch {
+    // ignore
+  }
+}
+
+async function handleSignedOut() {
+  cloud.user = null;
+  teardownCloudListener();
+  setAuthUi(null);
+  updateHeader();
+}
+
+function initCloud() {
+  setAuthUi(null);
+  updateHeader();
+
+  if (!cloud.available) return;
+
+  try {
+    firebase.initializeApp(window.FIREBASE_CONFIG);
+    cloud.auth = firebase.auth();
+    cloud.db = firebase.firestore();
+
+    try {
+      cloud.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    } catch {
+      // ignore
+    }
+
+    const provider = new firebase.auth.GoogleAuthProvider();
+
+    if (signInBtn) {
       signInBtn.addEventListener('click', async () => {
         try {
           markAuthAttempt();
@@ -584,9 +666,9 @@ function setAuthUi(user) {
                 'If you added this to your Home Screen, iOS may open Safari to finish sign-in. If sign-in fails, open the site in Safari and sign in there.'
               );
             }
-            await signInWithRedirect(cloud.auth, cloud.provider);
+            await cloud.auth.signInWithRedirect(provider);
           } else {
-            await signInWithPopup(cloud.auth, cloud.provider);
+            await cloud.auth.signInWithPopup(provider);
           }
         } catch (err) {
           clearAuthAttempt();
@@ -599,24 +681,14 @@ function setAuthUi(user) {
     if (signOutBtn) {
       signOutBtn.addEventListener('click', async () => {
         try {
-          await signOut(cloud.auth);
+          await cloud.auth.signOut();
         } catch {
           // ignore
         }
       });
     }
 
-    // If we used redirect sign-in (mobile), this finishes the auth flow.
-    try {
-      await getRedirectResult(cloud.auth);
-    } catch (err) {
-      if (isIos || isStandalone) {
-        const msg = String(err?.message || err || 'Redirect sign-in failed');
-        window.alert(`Redirect sign-in failed.\n\n${msg}`);
-      }
-    }
-
-    onAuthStateChanged(cloud.auth, (user) => {
+    cloud.auth.onAuthStateChanged((user) => {
       if (user) {
         clearAuthAttempt();
         handleSignedIn(user).catch(() => {
@@ -627,9 +699,6 @@ function setAuthUi(user) {
         maybeShowAuthHelp();
         handleSignedOut().catch(() => {});
       }
-    });} else {
-        handleSignedOut().catch(() => {});
-      }
     });
   } catch (err) {
     cloud.available = false;
@@ -637,13 +706,31 @@ function setAuthUi(user) {
     updateHeader();
 
     const msg = String(err?.message || err || 'Cloud sync failed to initialize');
-    if (userLabel) {
-      userLabel.textContent = 'Cloud sync unavailable';
-    }
-
-    // Helpful for debugging CDN blocks / offline.
-    console.error(msg);
+    setStatus(`Status: Error (v13). ${msg}`);
   }
+}
+
+async function resetAppCache() {
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    if (window.caches?.keys) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+  } catch {
+    // ignore
+  }
+
+  const next = `${location.origin}${location.pathname}?v=13&ts=${Date.now()}`;
+  location.replace(next);
 }
 
 let state = loadState();
@@ -652,7 +739,7 @@ saveLocalState();
 
 updateHeader();
 renderMedicines();
-initCloud();\r\nscheduleAuthHelpOnLoad();
+initCloud();
 
 medicineForm?.addEventListener('submit', (event) => {
   event.preventDefault();
@@ -745,40 +832,23 @@ window.addEventListener('keydown', (event) => {
   closeImportModal();
 });
 
-window.addEventListener('storage', (event) => {\r\n  if (event.key !== STORAGE_KEY) return;\r\n\r\n  editingMedicineId = null;\r\n  state = loadState();\r\n  updateHeader();\r\n  renderMedicines();\r\n});\r\n\r\nif (fixCacheBtn) {\r\n  fixCacheBtn.addEventListener('click', () => {\r\n    resetAppCache().catch(() => {});\r\n  });\r\n}\r\n\r\nif ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+window.addEventListener('storage', (event) => {
+  if (event.key !== STORAGE_KEY) return;
+
+  editingMedicineId = null;
+  state = loadState();
+  updateHeader();
+  renderMedicines();
+});
+
+if (fixCacheBtn) {
+  fixCacheBtn.addEventListener('click', () => {
+    resetAppCache().catch(() => {});
   });
 }
 
-
-
-
-
-
-
-
-
-
-async function resetAppCache() {
-  try {
-    if ('serviceWorker' in navigator) {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map((r) => r.unregister()));
-    }
-  } catch {
-    // ignore
-  }
-
-  try {
-    if (window.caches?.keys) {
-      const keys = await caches.keys();
-      await Promise.all(keys.map((k) => caches.delete(k)));
-    }
-  } catch {
-    // ignore
-  }
-
-  const next = `${location.origin}${location.pathname}?v=12&ts=${Date.now()}`;
-  location.replace(next);
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+  });
 }
