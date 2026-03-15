@@ -24,6 +24,8 @@ const STORAGE_KEY = 'medication-tracker.' + PROFILE_ID + '.v2';
 const LEGACY_STORAGE_KEYS = ['medication-tracker.v2', 'medication-tracker.v1'];
 const DEVICE_ID_KEY = 'medication-tracker.deviceId';
 const TIME_OPTIONS = ['morning', 'afternoon', 'evening'];
+const POST_SIGNIN_RELOAD_KEY = 'medication-tracker.postSigninReload';
+const POST_SIGNIN_RELOADED_KEY = 'medication-tracker.postSigninReloaded';
 
 let editingMedicineId = null;
 
@@ -556,7 +558,23 @@ function initCloud() {
       .catch(() => {});
 
     if (signInBtn) {
-      signInBtn.addEventListener('click', async () => {
+      signInBtn.addEventListener('click', async () => {
+        
+if (!isIos) {
+          
+try {
+            
+sessionStorage.setItem(POST_SIGNIN_RELOAD_KEY, '1');
+            
+sessionStorage.removeItem(POST_SIGNIN_RELOADED_KEY);
+          
+} catch {
+            
+// ignore
+          
+}
+        
+}
         try {
           if (isIos) {
             try {
@@ -596,7 +614,38 @@ function initCloud() {
     }
 
     cloud.auth.onAuthStateChanged((user) => {
-      if (user) {
+      if (user) {
+        
+if (!isIos) {
+          
+try {
+            
+const shouldReload =
+              
+sessionStorage.getItem(POST_SIGNIN_RELOAD_KEY) === '1' &&
+              
+sessionStorage.getItem(POST_SIGNIN_RELOADED_KEY) !== '1';
+
+            
+if (shouldReload) {
+              
+sessionStorage.setItem(POST_SIGNIN_RELOADED_KEY, '1');
+              
+sessionStorage.removeItem(POST_SIGNIN_RELOAD_KEY);
+              
+location.reload();
+              
+return;
+            
+}
+          
+} catch {
+            
+// ignore
+          
+}
+        
+}
         cloud.user = user;
         cloud.userDocRef = cloud.db.collection('users').doc(user.uid);
 
@@ -662,7 +711,19 @@ function initCloud() {
   })
   .catch(() => {});
       } else {
-        cloud.user = null;
+        cloud.user = null;
+        
+try {
+          
+sessionStorage.removeItem(POST_SIGNIN_RELOAD_KEY);
+          
+sessionStorage.removeItem(POST_SIGNIN_RELOADED_KEY);
+        
+} catch {
+          
+// ignore
+        
+}
         if (userLabel) userLabel.textContent = '';
 
         teardownCloudListener();
