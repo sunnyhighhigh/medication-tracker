@@ -18,7 +18,7 @@ const cancelImportBtn = document.getElementById('cancelImportBtn');
 
 const signInBtn = document.getElementById('signInBtn');
 const signOutBtn = document.getElementById('signOutBtn');
-const userLabel = document.getElementById('userLabel');
+const userLabel = document.getElementById('userLabel');\r\nconst statusLabel = document.getElementById('statusLabel');
 
 const STORAGE_KEY = 'medication-tracker.v1';
 const DEVICE_ID_KEY = 'medication-tracker.deviceId';
@@ -231,17 +231,15 @@ const cloud = {
   inFlight: false,
 };
 
-function updateHeader() {
+
+function setStatus(message) {
+  if (!statusLabel) return;
+  statusLabel.textContent = message;
+}\r\n
   const today = getTodayKey();
   let cloudLabel = '';
 
-  if (!cloud.available) {
-    cloudLabel = ' · Cloud: Off';
-  } else if (!cloud.user) {
-    cloudLabel = ' · Cloud: Sign in';
-  } else {
-    cloudLabel = cloud.connected ? ' · Cloud: On' : ' · Cloud: Connecting';
-  }
+  if (!cloud.available) {\r\n    cloudLabel = ' · Cloud: Off';\r\n    setStatus('Status: Cloud not configured (v10)');\r\n  } else if (!cloud.user) {\r\n    cloudLabel = ' · Cloud: Sign in';\r\n    setStatus('Status: Signed out (v10)');\r\n  } else {\r\n    cloudLabel = cloud.connected ? ' · Cloud: On' : ' · Cloud: Connecting';\r\n    setStatus(cloud.connected ? 'Status: Signed in + synced (v10)' : 'Status: Signed in, connecting (v10)');\r\n  }
 
   if (todayLabel) {
     todayLabel.textContent = `Today: ${today}${cloudLabel}`;
@@ -761,6 +759,7 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./service-worker.js').catch(() => {});
   });
 }
+
 
 
 
