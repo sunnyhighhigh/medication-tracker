@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = 'medication-tracker-cache-v15';
+﻿const CACHE_NAME = 'medication-tracker-cache-v16';
 
 const CORE_ASSETS = [
   './index.html',
@@ -66,5 +66,6 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
 
 

@@ -210,13 +210,13 @@ function updateHeader() {
 
   if (!cloud.available) {
     cloudLabel = ' · Cloud: Off';
-    setStatus('Status: Cloud not configured (v15)');
+    setStatus('Status: Cloud not configured (v16)');
   } else if (!cloud.user) {
     cloudLabel = ' · Cloud: Sign in';
-    setStatus('Status: Signed out (v15)');
+    setStatus('Status: Signed out (v16)');
   } else {
     cloudLabel = cloud.connected ? ' · Cloud: On' : ' · Cloud: Connecting';
-    setStatus(cloud.connected ? 'Status: Signed in + synced (v15)' : 'Status: Signed in, connecting (v15)');
+    setStatus(cloud.connected ? 'Status: Signed in + synced (v16)' : 'Status: Signed in, connecting (v16)');
   }
 
   if (todayLabel) {
@@ -636,7 +636,7 @@ async function handleSignedOut() {
   updateHeader();
 }
 
-function initCloud() {
+async function initCloud() {
   setAuthUi(null);
   updateHeader();
 
@@ -651,27 +651,49 @@ function initCloud() {
       .setPersistence(firebase.auth.Auth.Persistence.LOCAL)
       .catch((err) => {
         const msg = String((err && err.message) || err || 'Unable to set persistence');
-        setStatus('Status: Safari blocked sign-in storage (v15).');
+        setStatus('Status: Safari blocked sign-in storage (v16).');
         console.error('setPersistence failed:', msg);
         throw err;
       });
 
     const provider = new firebase.auth.GoogleAuthProvider();
-    // Finish iOS/Safari redirect sign-in and surface any errors.
-    cloud.auth
-      .getRedirectResult()
-      .then((result) => {
-        if (result && result.user) {
-          setStatus('Status: Signed in (v15)');
-        }
-      })
-      .catch((err) => {
-        const code = err && err.code ? String(err.code) : '';
-        const msg = String((err && err.message) || err || 'Redirect sign-in failed');
-        const details = [code, msg].filter(Boolean).join('\n');
-        window.alert('Redirect sign-in failed.\n\n' + details);
-        setStatus('Status: Redirect error (v15). ' + (code || msg));
-      });
+    try {
+      provider.setCustomParameters({ prompt: 'select_account' });
+    } catch {
+      // ignore
+    }
+
+    let hadAuthAttempt = false;
+    try {
+      hadAuthAttempt = Boolean(localStorage.getItem(AUTH_ATTEMPT_KEY));
+    } catch {
+      hadAuthAttempt = false;
+    }
+
+    try {
+      await persistencePromise;
+    } catch {
+      return;
+    }
+
+    if (hadAuthAttempt) {
+      setStatus('Status: Finishing sign-in (v16)…');
+    }
+
+    try {
+      const result = await cloud.auth.getRedirectResult();
+      if (result && result.user) {
+        setStatus('Status: Signed in (v16)');
+      } else if (hadAuthAttempt) {
+        setStatus('Status: Signed out after redirect (v16).');
+      }
+    } catch (err) {
+      const code = err && err.code ? String(err.code) : '';
+      const msg = String((err && err.message) || err || 'Redirect sign-in failed');
+      const details = [code, msg].filter(Boolean).join('\\n');
+      window.alert('Redirect sign-in failed.\\n\\n' + details);
+      setStatus('Status: Redirect error (v16). ' + (code || msg));
+    }
 
     if (signInBtn) {
       signInBtn.addEventListener('click', async () => {
@@ -682,26 +704,39 @@ function initCloud() {
             await persistencePromise;
           } catch {
             clearAuthAttempt();
-            window.alert('Safari blocked sign-in.\n\nOn iPhone: Settings > Safari: turn OFF Prevent Cross-Site Tracking, and ensure Cookies are allowed. Then reload and try again.');
+            window.alert(
+              'Safari blocked sign-in.\\n\\nOn iPhone: Settings > Safari: turn OFF Prevent Cross-Site Tracking, and ensure Cookies are allowed. Then reload and try again.'
+            );
             return;
           }
 
-          setStatus('Status: Starting Google sign-in (v15)…');
+          setStatus('Status: Starting Google sign-in (v16)…');
 
           if (isIos || isStandalone) {
-            if (isStandalone) {
-              window.alert(
-                'If you added this to your Home Screen, iOS may open Safari to finish sign-in. If sign-in fails, open the site in Safari and sign in there.'
-              );
+            // Try popup first on iOS; if blocked, fall back to redirect.
+            try {
+              await cloud.auth.signInWithPopup(provider);
+              return;
+            } catch (err) {
+              const code = err && err.code ? String(err.code) : '';
+              if (
+                code === 'auth/popup-blocked' ||
+                code === 'auth/popup-closed-by-user' ||
+                code === 'auth/operation-not-supported-in-this-environment' ||
+                code === 'auth/cancelled-popup-request'
+              ) {
+                await cloud.auth.signInWithRedirect(provider);
+                return;
+              }
+              throw err;
             }
-            await cloud.auth.signInWithRedirect(provider);
-          } else {
-            await cloud.auth.signInWithPopup(provider);
           }
+
+          await cloud.auth.signInWithPopup(provider);
         } catch (err) {
           clearAuthAttempt();
           const msg = String(err?.message || err || 'Sign-in failed');
-          window.alert(`Sign-in failed.\n\n${msg}`);
+          window.alert('Sign-in failed.\n\n' + msg);
         }
       });
     }
@@ -734,10 +769,9 @@ function initCloud() {
     updateHeader();
 
     const msg = String(err?.message || err || 'Cloud sync failed to initialize');
-    setStatus(`Status: Error (v15). ${msg}`);
+    setStatus('Status: Error (v16). ' + msg);
   }
 }
-
 async function resetAppCache() {
   try {
     if ('serviceWorker' in navigator) {
@@ -757,7 +791,7 @@ async function resetAppCache() {
     // ignore
   }
 
-  const next = `${location.origin}${location.pathname}?v=13&ts=${Date.now()}`;
+  const next = `${location.origin}${location.pathname}?v=16&ts=${Date.now()}`;
   location.replace(next);
 }
 
