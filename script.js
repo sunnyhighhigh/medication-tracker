@@ -1,4 +1,4 @@
-ï»¿window.__appLoaded = true;
+window.__appLoaded = true;
 
 const medicineForm = document.getElementById('medicineForm');
 const medicineInput = document.getElementById('medicineInput');
@@ -15,14 +15,14 @@ const signInBtn = document.getElementById('signInBtn');
 const signOutBtn = document.getElementById('signOutBtn');
 const userLabel = document.getElementById('userLabel');
 
-const STORAGE_KEY = 'medication-tracker.' + PROFILE_ID + '.v2';
-const DEVICE_ID_KEY = 'medication-tracker.deviceId';
-const TIME_OPTIONS = ['morning', 'afternoon', 'evening'];
 const PROFILE_ID = (() => {
   const meta = document.querySelector('meta[name="profile-id"]');
   const raw = meta && meta.content ? meta.content : 'default';
   return String(raw).trim().toLowerCase() || 'default';
 })();
+const STORAGE_KEY = 'medication-tracker.' + PROFILE_ID + '.v2';
+const DEVICE_ID_KEY = 'medication-tracker.deviceId';
+const TIME_OPTIONS = ['morning', 'afternoon', 'evening'];
 
 let editingMedicineId = null;
 
@@ -175,12 +175,12 @@ const cloud = {
 function updateHeader() {
   const today = getTodayKey();
   const cloudLabel = !cloud.available
-    ? ' Â· Cloud: Off'
+    ? ' · Cloud: Off'
     : !cloud.user
-      ? ' Â· Cloud: Sign in'
+      ? ' · Cloud: Sign in'
       : cloud.connected
-        ? ' Â· Cloud: On'
-        : ' Â· Cloud: Connecting';
+        ? ' · Cloud: On'
+        : ' · Cloud: Connecting';
 
   if (todayLabel) {
     todayLabel.textContent = `Today: ${today}${cloudLabel}`;
@@ -199,7 +199,7 @@ function updateSummary() {
     return;
   }
 
-  summary.textContent = `${takenCount} taken Â· ${pendingCount} pending`;
+  summary.textContent = `${takenCount} taken · ${pendingCount} pending`;
 }
 
 function renderMedicines() {
