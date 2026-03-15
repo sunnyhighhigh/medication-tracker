@@ -210,13 +210,13 @@ function updateHeader() {
 
   if (!cloud.available) {
     cloudLabel = ' · Cloud: Off';
-    setStatus('Status: Cloud not configured (v13)');
+    setStatus('Status: Cloud not configured (v14)');
   } else if (!cloud.user) {
     cloudLabel = ' · Cloud: Sign in';
-    setStatus('Status: Signed out (v13)');
+    setStatus('Status: Signed out (v14)');
   } else {
     cloudLabel = cloud.connected ? ' · Cloud: On' : ' · Cloud: Connecting';
-    setStatus(cloud.connected ? 'Status: Signed in + synced (v13)' : 'Status: Signed in, connecting (v13)');
+    setStatus(cloud.connected ? 'Status: Signed in + synced (v14)' : 'Status: Signed in, connecting (v14)');
   }
 
   if (todayLabel) {
@@ -654,11 +654,27 @@ function initCloud() {
     }
 
     const provider = new firebase.auth.GoogleAuthProvider();
-
-    if (signInBtn) {
+    // Finish iOS/Safari redirect sign-in and surface any errors.
+    cloud.auth
+      .getRedirectResult()
+      .then((result) => {
+        if (result && result.user) {
+          setStatus('Status: Signed in (v14)');
+        }
+      })
+      .catch((err) => {
+        const code = err && err.code ? String(err.code) : '';
+        const msg = String((err && err.message) || err || 'Redirect sign-in failed');
+        const details = [code, msg].filter(Boolean).join('\n');
+        window.alert('Redirect sign-in failed.\n\n' + details);
+        setStatus('Status: Redirect error (v14). ' + (code || msg));
+      });
+if (signInBtn) {
       signInBtn.addEventListener('click', async () => {
         try {
           markAuthAttempt();
+
+          setStatus('Status: Starting Google sign-in (v14)…');
 
           if (isIos || isStandalone) {
             if (isStandalone) {
@@ -706,7 +722,7 @@ function initCloud() {
     updateHeader();
 
     const msg = String(err?.message || err || 'Cloud sync failed to initialize');
-    setStatus(`Status: Error (v13). ${msg}`);
+    setStatus(`Status: Error (v14). ${msg}`);
   }
 }
 
@@ -852,3 +868,5 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./service-worker.js').catch(() => {});
   });
 }
+
+

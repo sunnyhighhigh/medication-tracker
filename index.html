@@ -105,31 +105,32 @@
   <script>
     (function () {
       const status = document.getElementById('statusLabel');
-      if (status) status.textContent = 'Status: Loading (v13)…';
+      if (status) status.textContent = 'Status: Loading (v14)…';
 
       window.addEventListener('error', (e) => {
         const message = (e && e.message) ? e.message : 'Unknown error';
-        if (status) status.textContent = `Status: Error loading app (v13). ${message}`;
+        if (status) status.textContent = `Status: Error loading app (v14). ${message}`;
       });
 
       window.addEventListener('unhandledrejection', (e) => {
         const reason = e && e.reason ? e.reason : 'Unknown rejection';
         const message = reason && reason.message ? reason.message : String(reason);
-        if (status) status.textContent = `Status: Error (v13). ${message}`;
+        if (status) status.textContent = `Status: Error (v14). ${message}`;
       });
 
       setTimeout(() => {
         if (!window.__appLoaded) {
-          if (status) status.textContent = 'Status: App script did not start (v13). Disable content blockers and ensure JavaScript is enabled.';
+          if (status) status.textContent = 'Status: App script did not start (v14). Disable content blockers and ensure JavaScript is enabled.';
         }
       }, 3000);
     })();
   </script>
 
-  <script src="firebase-config.js?v=13"></script>
+  <script src="firebase-config.js?v=14"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-  <script src="script.js?v=13"></script>
+  <script src="script.js?v=14"></script>
 </body>
 </html>
+
