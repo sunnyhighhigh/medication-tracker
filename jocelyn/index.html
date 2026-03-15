@@ -1,0 +1,94 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="profile-id" content="jocelyn" />\r\n<title>Jocelyn Medication Tracker</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="container">
+    <header class="header hero">
+      <div class="brand">
+        <svg class="logo" width="48" height="48" viewBox="0 0 64 64" role="img" aria-labelledby="logoTitle logoDesc" xmlns="http://www.w3.org/2000/svg">
+          <title id="logoTitle">Daily Medication Tracker</title>
+          <desc id="logoDesc">A pill with a checkmark inside a colorful badge.</desc>
+          <defs>
+            <radialGradient id="g1" cx="30%" cy="25%" r="80%">
+              <stop offset="0" stop-color="#93c5fd" />
+              <stop offset="0.55" stop-color="#60a5fa" />
+              <stop offset="1" stop-color="#a78bfa" />
+            </radialGradient>
+            <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#1d4ed8" flood-opacity="0.25" />
+            </filter>
+          </defs>
+
+          <g filter="url(#shadow)">
+            <rect x="6" y="6" width="52" height="52" rx="18" fill="url(#g1)" />
+            <rect x="6" y="6" width="52" height="52" rx="18" fill="none" stroke="#ffffff" opacity="0.28" />
+          </g>
+
+          <g transform="translate(16 18)">
+            <rect x="0" y="14" width="32" height="16" rx="8" fill="#ffffff" opacity="0.96" />
+            <path d="M16 14h8a8 8 0 0 1 0 16h-8z" fill="#fde68a" opacity="0.96" />
+            <path d="M9.5 22.4l3.2 3.4 7.8-8.6" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+          </g>
+
+          <g opacity="0.9">
+            <path d="M49 16l1.2 2.6 2.8 0.3-2.1 1.9 0.6 2.8-2.5-1.4-2.5 1.4 0.6-2.8-2.1-1.9 2.8-0.3z" fill="#ffffff" opacity="0.8" />
+          </g>
+        </svg>
+
+        <div class="brand-text">
+          <h1>Jocelyn Medication Tracker</h1>
+          <p class="subtitle">Small steps, big health—check off your meds each day.</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div class="auth-row" aria-label="Account">
+          <span id="userLabel" class="user" aria-live="polite"></span>
+          <button id="signInBtn" type="button" class="secondary">Sign in</button>
+          <button id="signOutBtn" type="button" class="secondary" hidden>Sign out</button>
+        </div>
+        <p id="todayLabel" class="today" aria-live="polite"></p>
+        <button id="resetTodayBtn" type="button" class="secondary">Reset Today</button>
+      </div>
+    </header>
+
+    <section class="card">
+      <h2>Add Medicine</h2>
+      <form id="medicineForm" class="form-row">
+        <label class="sr-only" for="medicineInput">Medicine name</label>
+        <input id="medicineInput" type="text" placeholder="e.g., Vitamin D" autocomplete="off" required />
+
+        <label class="sr-only" for="timeInput">Time of day</label>
+        <select id="timeInput" aria-label="Time of day">
+          <option value="morning">Morning</option>
+          <option value="afternoon">Afternoon</option>
+          <option value="evening">Evening</option>
+        </select>
+
+        <button id="addBtn" type="submit">Add</button>
+      </form>
+      <p id="signinHint" class="footnote" hidden>Sign in to save and sync your medicines.</p>
+    </section>
+
+    <section class="card">
+      <h2>Today&#39;s Medicines</h2>
+      <p id="summary" class="summary" aria-live="polite"></p>
+      <ul id="medicineList" class="medicine-list"></ul>
+      <p id="emptyState" class="empty">No medicines added yet.</p>
+      <p class="footnote">Saved privately to your account when signed in.</p>
+    </section>
+  </main>
+
+  <script src="firebase-config.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
+
