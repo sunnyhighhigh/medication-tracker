@@ -433,13 +433,21 @@ function teardownCloudListener() {
   cloud.lastRemoteUpdatedAtMs = 0;
 }
 
-function applyRemoteState(remoteState, updatedAtMs, sourceDeviceId) {
-  if (sourceDeviceId && sourceDeviceId === deviceId) {
-    cloud.lastRemoteUpdatedAtMs = Math.max(cloud.lastRemoteUpdatedAtMs, updatedAtMs || 0);
-    return;
-  }
-
+function applyRemoteState(remoteState, updatedAtMs, sourceDeviceId, options = {}) {
+  const force = Boolean(options && options.force);
   const next = normalizeState(remoteState);
+
+  const remoteHasMeds = Array.isArray(next.medicines) && next.medicines.length > 0;
+  const localHasMeds = Array.isArray(state?.medicines) && state.medicines.length > 0;
+
+  // Avoid echoing our own writes, but still apply on first connect so the UI populates
+  // immediately after sign-in (no manual refresh).
+  if (!force && sourceDeviceId && sourceDeviceId === deviceId) {
+    if (cloud.lastRemoteUpdatedAtMs > 0 || localHasMeds || !remoteHasMeds) {
+      cloud.lastRemoteUpdatedAtMs = Math.max(cloud.lastRemoteUpdatedAtMs, updatedAtMs || 0);
+      return;
+    }
+  }
 
   cloud.applyingRemote = true;
   try {
@@ -632,7 +640,27 @@ function initCloud() {
           }
         );
 
-        ensureUserDocExists().catch(() => {});
+        ensureUserDocExists()
+  .then(() => cloud.userDocRef.get())
+  .then((snap) => {
+    if (!snap.exists) return;
+    if (Array.isArray(state.medicines) && state.medicines.length > 0) return;
+
+    const data = snap.data() || {};
+    const profileData = data.profiles && data.profiles[PROFILE_ID] ? data.profiles[PROFILE_ID] : null;
+    const updatedAtMs =
+      typeof profileData?.updatedAtMs === 'number'
+        ? profileData.updatedAtMs
+        : typeof data?.updatedAtMs === 'number'
+          ? data.updatedAtMs
+          : 0;
+
+    const remoteState = profileData?.state || data?.state;
+    const sourceDeviceId = profileData?.sourceDeviceId || data?.sourceDeviceId;
+
+    applyRemoteState(remoteState, updatedAtMs, sourceDeviceId, { force: true });
+  })
+  .catch(() => {});
       } else {
         cloud.user = null;
         if (userLabel) userLabel.textContent = '';
