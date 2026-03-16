@@ -393,8 +393,20 @@ function renderMedicines() {
         renderMedicines();
       });
 
+      const deleteButton = document.createElement('button');
+      deleteButton.type = 'button';
+      deleteButton.className = 'mini danger';
+      deleteButton.textContent = 'Delete';
+      deleteButton.addEventListener('click', () => {
+        state.medicines = state.medicines.filter((item) => item.id !== medicine.id);
+        if (editingMedicineId === medicine.id) editingMedicineId = null;
+        saveState();
+        renderMedicines();
+      });
+
       actions.appendChild(editButton);
       actions.appendChild(completeButton);
+      actions.appendChild(deleteButton);
     }
 
     listItem.appendChild(leftSide);
@@ -873,4 +885,5 @@ if ('serviceWorker' in navigator) {
     }).catch(() => {});
   });
 }
+
 

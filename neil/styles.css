@@ -349,3 +349,12 @@ button.mini {
     flex-direction: column;
   }
 }
+
+button.danger {
+  background: #dc2626;
+}
+
+button.danger:hover {
+  background: #b91c1c;
+}
+
