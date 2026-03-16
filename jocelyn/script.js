@@ -1,4 +1,4 @@
-window.__appLoaded = true;
+ï»¿window.__appLoaded = true;
 
 const medicineForm = document.getElementById('medicineForm');
 const medicineInput = document.getElementById('medicineInput');
@@ -14,6 +14,10 @@ const signinHint = document.getElementById('signinHint');
 const signInBtn = document.getElementById('signInBtn');
 const signOutBtn = document.getElementById('signOutBtn');
 const userLabel = document.getElementById('userLabel');
+const updateBanner = document.getElementById('updateBanner');
+const updateMessage = document.getElementById('updateMessage');
+const refreshAppBtn = document.getElementById('refreshAppBtn');
+const dismissUpdateBtn = document.getElementById('dismissUpdateBtn');
 
 const PROFILE_ID = (() => {
   const meta = document.querySelector('meta[name="profile-id"]');
@@ -28,6 +32,8 @@ const POST_SIGNIN_RELOAD_KEY = 'medication-tracker.postSigninReload';
 const POST_SIGNIN_RELOADED_KEY = 'medication-tracker.postSigninReloaded';
 
 let editingMedicineId = null;
+let waitingWorker = null;
+let isRefreshingForUpdate = false;
 
 function makeId() {
   if (window.crypto && typeof crypto.randomUUID === 'function') {
@@ -203,12 +209,12 @@ const cloud = {
 function updateHeader() {
   const today = getTodayKey();
   const cloudLabel = !cloud.available
-    ? ' · Cloud: Off'
+    ? ' Â· Cloud: Off'
     : !cloud.user
-      ? ' · Cloud: Sign in'
+      ? ' Â· Cloud: Sign in'
       : cloud.connected
-        ? ' · Cloud: On'
-        : ' · Cloud: Connecting';
+        ? ' Â· Cloud: On'
+        : ' Â· Cloud: Connecting';
 
   if (todayLabel) {
     todayLabel.textContent = `Today: ${today}${cloudLabel}`;
@@ -227,7 +233,7 @@ function updateSummary() {
     return;
   }
 
-  summary.textContent = `${takenCount} taken · ${pendingCount} pending`;
+  summary.textContent = `${takenCount} taken Â· ${pendingCount} pending`;
 }
 
 function renderMedicines() {
@@ -465,6 +471,47 @@ function applyRemoteState(remoteState, updatedAtMs, sourceDeviceId, options = {}
   updateHeader();
 }
 
+async function queueCloudPush() {
+  if (!cloud.available || !cloud.user || !cloud.userDocRef || cloud.applyingRemote) {
+    return;
+  }
+
+  if (cloud.pushTimer) {
+    clearTimeout(cloud.pushTimer);
+  }
+
+  cloud.pushTimer = setTimeout(async () => {
+    if (cloud.inFlight || !cloud.userDocRef) return;
+
+    cloud.pushTimer = null;
+    cloud.inFlight = true;
+
+    const updatedAtMs = Date.now();
+    const payload = {
+      schemaVersion: 2,
+      profiles: {
+        [PROFILE_ID]: {
+          state: normalizeState(state),
+          updatedAtMs,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          sourceDeviceId: deviceId,
+        },
+      },
+    };
+
+    cloud.lastRemoteUpdatedAtMs = Math.max(cloud.lastRemoteUpdatedAtMs, updatedAtMs);
+
+    try {
+      await cloud.userDocRef.set(payload, { merge: true });
+      cloud.connected = true;
+    } catch {
+      cloud.connected = false;
+    } finally {
+      cloud.inFlight = false;
+      updateHeader();
+    }
+  }, 150);
+}
 async function ensureUserDocExists() {
   if (!cloud.userDocRef) return;
 
@@ -777,6 +824,43 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./service-worker.js').catch(() => {});
   });
 }
+function showUpdateBanner(worker) {
+  waitingWorker = worker || waitingWorker;
+  if (!updateBanner || !waitingWorker) return;
+  if (updateMessage) updateMessage.textContent = 'A newer version is ready. Refresh to update this app.';
+  updateBanner.hidden = false;
+}
 
+function hideUpdateBanner() {
+  waitingWorker = null;
+  if (updateBanner) updateBanner.hidden = true;
+}
 
+function watchServiceWorkerRegistration(registration) {
+  if (!registration) return;
 
+  if (registration.waiting) {
+    showUpdateBanner(registration.waiting);
+  }
+
+  registration.addEventListener('updatefound', () => {
+    const installingWorker = registration.installing;
+    if (!installingWorker) return;
+
+    installingWorker.addEventListener('statechange', () => {
+      if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+        showUpdateBanner(registration.waiting || installingWorker);
+      }
+    });
+  });
+}
+
+refreshAppBtn?.addEventListener('click', () => {
+  if (!waitingWorker) return;
+  if (updateBanner) updateBanner.hidden = true;
+  waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+});
+
+dismissUpdateBtn?.addEventListener('click', () => {
+  hideUpdateBanner();
+});

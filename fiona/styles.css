@@ -312,3 +312,40 @@ button.mini {
     width: 100%;
   }
 }
+
+.update-banner {
+  position: sticky;
+  top: 12px;
+  z-index: 20;
+  max-width: 760px;
+  margin: 12px auto 0;
+  padding: 14px 16px;
+  border: 1px solid rgba(29, 78, 216, 0.18);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(219, 234, 254, 0.98), rgba(255, 255, 255, 0.98));
+  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.12);
+}
+
+.update-message {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.update-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+@media (max-width: 520px) {
+  .update-banner {
+    margin: 8px 16px 0;
+    top: 8px;
+  }
+
+  .update-actions {
+    flex-direction: column;
+  }
+}

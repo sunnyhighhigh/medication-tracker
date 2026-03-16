@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -8,6 +8,13 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <div id="updateBanner" class="update-banner" hidden>
+    <p id="updateMessage" class="update-message">An update is ready.</p>
+    <div class="update-actions">
+      <button id="refreshAppBtn" type="button">Refresh</button>
+      <button id="dismissUpdateBtn" type="button" class="secondary">Later</button>
+    </div>
+  </div>
   <main class="container">
     <header class="header hero">
       <div class="brand">
@@ -43,7 +50,7 @@
 
         <div class="brand-text">
           <h1>Neil Medication Tracker</h1>
-          <p class="subtitle">Small steps, big health�check off your meds each day.</p>
+          <p class="subtitle">Small steps, big health—check off your meds each day.</p>
         </div>
       </div>
 
@@ -92,6 +99,7 @@
   <script src="script.js"></script>
 </body>
 </html>
+
 
 
 

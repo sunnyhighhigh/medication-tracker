@@ -1,4 +1,4 @@
-function getScopeKey() {
+﻿function getScopeKey() {
   try {
     const path = new URL(self.registration.scope).pathname;
     return String(path)
@@ -10,7 +10,7 @@ function getScopeKey() {
   }
 }
 
-const CACHE_NAME = 'medication-tracker-cache-' + getScopeKey() + '-v19';
+const CACHE_NAME = 'medication-tracker-cache-' + getScopeKey() + '-v20';
 
 const CORE_ASSETS = [
   './index.html',
@@ -21,6 +21,8 @@ const CORE_ASSETS = [
   './manifest.webmanifest',
   './icon.svg',
 ];
+
+const APP_SHELL = new Set(CORE_ASSETS.map((asset) => new URL(asset, self.registration.scope).pathname));
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -47,19 +49,33 @@ self.addEventListener('fetch', (event) => {
 
   if (request.method !== 'GET') return;
 
-  if (request.mode === 'navigate') {
-    event.respondWith(fetch(request).catch(() => caches.match('./index.html')));
+  let url;
+  try {
+    url = new URL(request.url);
+  } catch {
     return;
   }
 
-  // Avoid caching cross-origin requests (Firebase CDN, etc.).
-  try {
-    const url = new URL(request.url);
-    if (url.origin !== self.location.origin) {
-      return;
-    }
-  } catch {
-    // ignore
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  const isAppShellRequest = request.mode === 'navigate' || APP_SHELL.has(url.pathname);
+
+  if (isAppShellRequest) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          return response;
+        })
+        .catch(async () => {
+          const cached = await caches.match(request);
+          return cached || caches.match('./index.html');
+        })
+    );
+    return;
   }
 
   event.respondWith(
@@ -75,4 +91,9 @@ self.addEventListener('fetch', (event) => {
         .catch(() => cached);
     })
   );
+});
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
