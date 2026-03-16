@@ -819,11 +819,6 @@ if (resetTodayBtn) {
   });
 }
 
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./service-worker.js').catch(() => {});
-  });
-}
 function showUpdateBanner(worker) {
   waitingWorker = worker || waitingWorker;
   if (!updateBanner || !waitingWorker) return;
@@ -864,3 +859,18 @@ refreshAppBtn?.addEventListener('click', () => {
 dismissUpdateBtn?.addEventListener('click', () => {
   hideUpdateBanner();
 });
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (isRefreshingForUpdate) return;
+    isRefreshingForUpdate = true;
+    window.location.reload();
+  });
+
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js').then((registration) => {
+      watchServiceWorkerRegistration(registration);
+    }).catch(() => {});
+  });
+}
+
