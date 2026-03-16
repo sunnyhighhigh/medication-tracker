@@ -284,14 +284,20 @@ button.danger:hover {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 button.mini {
-  padding: 6px 8px;
-  font-size: 12px;
-  line-height: 1.2;
+  width: auto;
+  min-width: 0;
+  max-width: max-content;
+  flex: 0 0 auto;
+  padding: 5px 7px;
+  font-size: 11px;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 
 .name-edit-input {
@@ -347,15 +353,25 @@ button.mini {
     width: 100%;
   }
 
+  .medicine-item {
+    align-items: flex-start;
+  }
+
   .medicine-actions {
-    gap: 4px;
+    gap: 3px;
+    justify-content: flex-start;
+    align-self: flex-start;
   }
 
   button.mini {
-    width: auto;
+    width: auto !important;
     min-width: 0;
-    padding: 5px 7px;
-    font-size: 11px;
+    max-width: max-content;
+    flex: 0 0 auto;
+    padding: 4px 6px;
+    font-size: 10px;
+    line-height: 1;
+    border-radius: 6px;
   }
 
   .update-banner {
