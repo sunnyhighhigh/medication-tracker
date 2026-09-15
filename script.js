@@ -209,12 +209,12 @@ const cloud = {
 function updateHeader() {
   const today = getTodayKey();
   const cloudLabel = !cloud.available
-    ? ' · Cloud: Off'
+    ? ' Â· Cloud: Off'
     : !cloud.user
-      ? ' · Cloud: Sign in'
+      ? ' Â· Cloud: Sign in'
       : cloud.connected
-        ? ' · Cloud: On'
-        : ' · Cloud: Connecting';
+        ? ' Â· Cloud: On'
+        : ' Â· Cloud: Connecting';
 
   if (todayLabel) {
     todayLabel.textContent = `Today: ${today}${cloudLabel}`;
@@ -233,7 +233,7 @@ function updateSummary() {
     return;
   }
 
-  summary.textContent = `${takenCount} taken · ${pendingCount} pending`;
+  summary.textContent = `${takenCount} taken Â· ${pendingCount} pending`;
 }
 
 function renderMedicines() {
@@ -404,8 +404,8 @@ function renderMedicines() {
         renderMedicines();
       });
 
-      actions.appendChild(editButton);
       actions.appendChild(completeButton);
+      actions.appendChild(editButton);
       actions.appendChild(deleteButton);
     }
 
