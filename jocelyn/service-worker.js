@@ -10,7 +10,7 @@ function getScopeKey() {
   }
 }
 
-const CACHE_NAME = 'medication-tracker-cache-' + getScopeKey() + '-v22';
+const CACHE_NAME = 'medication-tracker-cache-' + getScopeKey() + '-v23';
 
 const CORE_ASSETS = [
   './index.html',

@@ -1,4 +1,4 @@
-﻿* {
+* {
   box-sizing: border-box;
 }
 
@@ -202,8 +202,9 @@ button.danger:hover {
 
 .medicine-item {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   justify-content: space-between;
-  align-items: center;
   gap: 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
