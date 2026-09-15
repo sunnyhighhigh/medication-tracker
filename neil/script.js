@@ -1,4 +1,4 @@
-ï»¿window.__appLoaded = true;
+window.__appLoaded = true;
 
 const medicineForm = document.getElementById('medicineForm');
 const medicineInput = document.getElementById('medicineInput');
@@ -209,12 +209,12 @@ const cloud = {
 function updateHeader() {
   const today = getTodayKey();
   const cloudLabel = !cloud.available
-    ? ' Â· Cloud: Off'
+    ? ' · Cloud: Off'
     : !cloud.user
-      ? ' Â· Cloud: Sign in'
+      ? ' · Cloud: Sign in'
       : cloud.connected
-        ? ' Â· Cloud: On'
-        : ' Â· Cloud: Connecting';
+        ? ' · Cloud: On'
+        : ' · Cloud: Connecting';
 
   if (todayLabel) {
     todayLabel.textContent = `Today: ${today}${cloudLabel}`;
@@ -233,7 +233,7 @@ function updateSummary() {
     return;
   }
 
-  summary.textContent = `${takenCount} taken Â· ${pendingCount} pending`;
+  summary.textContent = `${takenCount} taken · ${pendingCount} pending`;
 }
 
 function renderMedicines() {
@@ -617,7 +617,8 @@ function initCloud() {
       .catch(() => {});
 
     if (signInBtn) {
-      signInBtn.addEventListener('click', async () => {
+      signInBtn.addEventListener('click', async () => {
+
         
 if (!isIos) {
           
@@ -673,7 +674,8 @@ sessionStorage.removeItem(POST_SIGNIN_RELOADED_KEY);
     }
 
     cloud.auth.onAuthStateChanged((user) => {
-      if (user) {
+      if (user) {
+
         
 if (!isIos) {
           
@@ -770,7 +772,8 @@ return;
   })
   .catch(() => {});
       } else {
-        cloud.user = null;
+        cloud.user = null;
+
         
 try {
           
